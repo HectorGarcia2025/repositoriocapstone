@@ -5,7 +5,15 @@ import numpy as np
 import joblib
 import streamlit as st
 from datetime import datetime
+from pathlib import Path
 
+def _show_image_if_exists(path: str, caption: str = "") -> bool:
+    """Renderiza la imagen solo si el archivo existe y es archivo regular."""
+    p = Path(path)
+    if p.is_file():
+        st.image(str(p), caption=caption, use_container_width=True)
+        return True
+    return False
 # ======================================
 # CONFIGURACIÓN GENERAL
 # ======================================
@@ -375,41 +383,75 @@ elif opcion == "Sistema predictivo":
 # ======================================
 elif opcion == "Comparación de modelos":
     st.subheader("Comparativa de modelos de clasificación")
+
     st.dataframe(df_metricas_global.style.format("{:.4f}"), use_container_width=True)
 
+    # Figuras comparativas (si existen)
     comp_dir = os.path.join(FIG_DIR, "modelos_clasificacion")
     alt1 = os.path.join(FIG_DIR, "comparativas_class", "ROC_Comparativa_Modelos.png")
-    if os.path.exists(comp_dir):
-        for f in ["heatmap_metricas_modelos.png", "f1score_comparativa_final.png"]:
-            p = os.path.join(comp_dir, f)
-            if os.path.exists(p):
-                st.image(p, use_container_width=True)
-    if os.path.exists(alt1):
-        st.image(alt1, caption="Curvas ROC simuladas a partir de AUC", use_container_width=True)
+
+    mostradas = 0
+    # heatmap y barras de F1 si están en /figuras/modelos_clasificacion
+    for fname, cap in [
+        ("heatmap_metricas_modelos.png", "Heatmap de métricas por modelo"),
+        ("f1score_comparativa_final.png", "Comparativa de F1-score por modelo"),
+    ]:
+        p = os.path.join(comp_dir, fname)
+        if _show_image_if_exists(p, cap):
+            mostradas += 1
+
+    # Curvas ROC simuladas si están en /figuras/comparativas_class
+    if _show_image_if_exists(alt1, "Curvas ROC simuladas a partir de AUC"):
+        mostradas += 1
+
+    if mostradas == 0:
+        st.warning(
+            "No se encontraron imágenes de comparación en el repositorio.\n\n"
+            "Súbelas a:\n"
+            "- `figuras/modelos_clasificacion/heatmap_metricas_modelos.png`\n"
+            "- `figuras/modelos_clasificacion/f1score_comparativa_final.png`\n"
+            "- `figuras/comparativas_class/ROC_Comparativa_Modelos.png`"
+        )
 
     if mejor_modelo:
-        st.info(f"Según F1-score, el modelo seleccionado es **{mejor_modelo}**.")
+        st.info(
+            f"Según las métricas cargadas, el modelo con mejor F1-score es **{mejor_modelo}**. "
+            "Los demás modelos sirven como respaldo y comparación."
+        )
+    else:
+        st.info(
+            "Aún no se encontraron métricas reales en la carpeta de modelos; "
+            "se muestran valores de ejemplo para ilustrar la comparación."
+        )
 
 # ======================================
 # 4) CURVAS DE ENTRENAMIENTO
 # ======================================
 elif opcion == "Curvas de entrenamiento por modelo":
     st.subheader("Curvas de entrenamiento/validación por modelo")
+
     curvas_dir = os.path.join(FIG_DIR, "curvas_modelos")
     candidatos = [
-        os.path.join(curvas_dir, "curvas_4_modelos.png"),
-        os.path.join(curvas_dir, "rf_curvas.png"),
-        os.path.join(curvas_dir, "svm_curvas.png"),
-        os.path.join(curvas_dir, "log_curvas.png"),
-        os.path.join(curvas_dir, "ann_curvas.png"),
+        (os.path.join(curvas_dir, "curvas_4_modelos.png"), "Curvas globales (4 modelos)"),
+        (os.path.join(curvas_dir, "rf_curvas.png"), "Random Forest"),
+        (os.path.join(curvas_dir, "svm_curvas.png"), "SVM"),
+        (os.path.join(curvas_dir, "log_curvas.png"), "Regresión Logística"),
+        (os.path.join(curvas_dir, "ann_curvas.png"), "Red Neuronal (ANN)"),
     ]
-    mostrado = False
-    for p in candidatos:
-        if os.path.exists(p):
-            st.image(p, use_container_width=True)
-            mostrado = True
-    if not mostrado:
-        st.info("No se encontraron curvas. Ejecuta primero el script de curvas.")
+
+    mostradas = 0
+    for p, cap in candidatos:
+        if _show_image_if_exists(p, cap):
+            mostradas += 1
+
+    if mostradas == 0:
+        st.warning(
+            "No se encontraron imágenes de curvas en el repositorio.\n\n"
+            "Súbelas a `figuras/curvas_modelos/` con estos nombres opcionales:\n"
+            "- `curvas_4_modelos.png`, `rf_curvas.png`, `svm_curvas.png`,\n"
+            "  `log_curvas.png`, `ann_curvas.png`.\n\n"
+            "Si prefieres generarlas on-the-fly, avísame y lo integramos aquí."
+        )
 
 # ======================================
 # 5) INFORMACIÓN DEL PROYECTO
