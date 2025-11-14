@@ -11,7 +11,7 @@ def _show_image_if_exists(path: str, caption: str = "") -> bool:
     """Renderiza la imagen solo si el archivo existe y es archivo regular."""
     p = Path(path)
     if p.is_file():
-        st.image(str(p), caption=caption, use_container_width=True)
+        st.image(str(p), caption=caption)
         return True
     return False
 # ======================================
@@ -45,7 +45,7 @@ MODELS_DIR = _find_models_dir()
 # ARCHIVOS DE MODELOS (ajusta si cambian)
 # ======================================
 MODELOS = {
-    "Random Forest (Bal)": {
+    "Random Forest": {
         "model_path": os.path.join(MODELS_DIR, "modelo_curva_rf_class_bal.joblib"),
         "scaler_path": os.path.join(MODELS_DIR, "scaler_X_rf_class_bal.joblib"),
         "metricas_file": "metricas_rf_class_bal.joblib",
@@ -298,7 +298,7 @@ if opcion == "Resumen general":
 elif opcion == "Sistema predictivo":
     st.subheader("Aplicación del modelo seleccionado sobre datos de producción")
     st.markdown(
-        f"El sistema usa automáticamente **{mejor_modelo}** (mejor F1-score). "
+        f"El sistema usa automáticamente **{mejor_modelo}** (mejor Accuracy - Precisión - Recall - F1-score). "
         "Carga un Excel (.xlsx) o usa el dataset interno."
     )
 
@@ -469,6 +469,5 @@ elif opcion == "Información del proyecto":
 **Bibliotecas:** pandas, scikit-learn, TensorFlow/Keras, seaborn, matplotlib, streamlit  
 """)
     st.info(
-        "Este panel aplica la fórmula oficial (minutaje*cantidad / min_trab * 100), "
-        "selecciona automáticamente el mejor modelo por F1 y muestra la curva de aprendizaje en tiempo real."
+        "selecciona automáticamente el mejor modelo por la mayoria de metricas y muestra la curva de aprendizaje en tiempo real."
     )
