@@ -453,8 +453,9 @@ elif opcion == "Curvas de entrenamiento por modelo":
             "Si prefieres generarlas on-the-fly, avísame y lo integramos aquí."
         )
 
+
 # ======================================
-# 5) INFORMACIÓN DEL PROYECTO
+# 4) INFORMACIÓN DEL PROYECTO
 # ======================================
 elif opcion == "Información del proyecto":
     st.subheader("Información del Proyecto")
