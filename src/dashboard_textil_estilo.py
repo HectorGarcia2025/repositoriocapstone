@@ -113,8 +113,9 @@ body {
   padding:6px 12px;
   border-radius:999px;
   border:1px solid rgba(255,255,255,0.35);
-  cursor:default;
   background-color:rgba(255,255,255,0.06);
+  text-decoration:none;
+  color:#fff;
 }
 
 /* Hero principal */
@@ -272,11 +273,6 @@ st.markdown(f"""
     <div class='brand-title'>TOPITOP · CURVA DE APRENDIZAJE</div>
     <div class='brand-sub'>Dashboard de predicción textil · Actualizado el {fecha_actual}</div>
   </div>
-  <div class='nav-links'>
-    <div class='nav-pill'>Home</div>
-    <div class='nav-pill'>Modelo Predictivo</div>
-    <div class='nav-pill'>Indicadores</div>
-  </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -297,7 +293,7 @@ opcion = st.sidebar.radio(
 )
 
 # ======================================
-# UTILIDADES Y PREPROCESO
+# UTILIDADES Y PREPROCESO  (igual que antes)
 # ======================================
 def cargar_datos_default():
     hojas = ["L72", "L79"]
@@ -328,22 +324,18 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
     if "tipo" in df.columns:
         df = df[df["tipo"].str.contains("salida", case=False, na=False)]
 
-    # Evitar columnas duplicadas
     df = df.loc[:, ~df.columns.duplicated()]
 
-    # cantidad
     cand_cant = [c for c in df.columns if "cant" in c]
     if not cand_cant:
         return pd.DataFrame()
     col_cant = cand_cant[0]
 
-    # min_trab
     cand_trab = [c for c in df.columns if "min trab" in c or "min_trab" in c or "perman" in c]
     if not cand_trab:
         return pd.DataFrame()
     col_min_trab = cand_trab[0]
 
-    # minutaje
     cand_minutaje = [c for c in df.columns if "mix" in c or "minutaje" in c or ("minuto" in c and "prenda" in c)]
     if cand_minutaje:
         col_minutaje = cand_minutaje[0]
@@ -358,7 +350,6 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
             / pd.to_numeric(df[col_cant], errors="coerce")
         )
 
-    # features principales
     df_feat = df[[col_cant, "minutaje", col_min_trab]].copy()
     df_feat.columns = ["cantidad", "minutaje", "min_trab"]
     df_feat = df_feat.loc[:, ~df_feat.columns.duplicated()]
@@ -387,7 +378,6 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
         df_feat["eficiencia_pct"], bins=bins, labels=labels, include_lowest=True
     )
 
-    # fecha (dayfirst=True)
     col_fecha = [c for c in df.columns if "fecha" in c]
     if col_fecha:
         fecha_series = pd.to_datetime(
@@ -397,7 +387,6 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
         )
         df_feat["fecha"] = fecha_series.reindex(df_feat.index)
 
-    # prenda (estilo/modelo/prenda)
     col_prenda = [c for c in df.columns if "prenda" in c or "estilo" in c or "modelo" in c]
     if col_prenda:
         prenda_series = df[col_prenda[0]].astype(str)
@@ -536,10 +525,106 @@ if opcion == "Resumen general":
         unsafe_allow_html=True,
     )
 
+    # --------- SECCIONES: BENEFICIOS / IMPACTO / INDICADORES ----------
+    st.markdown("""
+    <section id="beneficios" class="info-section">
+      <h2 class="section-title">Beneficios para la operación</h2>
+      <p class="section-subtitle">
+        El modelo permite anticipar el nivel de eficiencia de la línea y entender cómo evoluciona la
+        curva de aprendizaje a medida que se producen más lotes del mismo estilo.
+      </p>
+      <div class="benefits-grid">
+        <div class="benefit-card">
+          <div class="benefit-title">Visibilidad de la curva</div>
+          <div class="benefit-text">
+            Se visualiza de forma continua la evolución de la eficiencia real y predicha, ayudando a
+            identificar cuándo la línea se estabiliza.
+          </div>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-title">Soporte a la decisión</div>
+          <div class="benefit-text">
+            Supervisores y jefes de planta pueden tomar decisiones informadas sobre ajustes de carga,
+            cambios de estilo o capacitación.
+          </div>
+        </div>
+        <div class="benefit-card">
+          <div class="benefit-title">Detección temprana de desviaciones</div>
+          <div class="benefit-text">
+            Diferencias entre la eficiencia real y la predicha alertan sobre posibles problemas en
+            la línea (cuellos de botella, falta de balanceo, etc.).
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="impacto" class="info-section">
+      <h2 class="section-title">Impacto de nuestras predicciones</h2>
+      <p class="section-subtitle">
+        Las predicciones de eficiencia ofrecen una referencia cuantitativa de lo que se espera de cada
+        lote, considerando la experiencia acumulada de la línea.
+      </p>
+      <div class="impact-grid">
+        <div class="impact-card">
+          <div class="impact-title">Planeamiento más realista</div>
+          <div class="impact-text">
+            Al conocer la curva de aprendizaje, se pueden estimar mejor los tiempos de producción y
+            fechas de entrega.
+          </div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-title">Estándares basados en datos</div>
+          <div class="impact-text">
+            La empresa puede contrastar sus estándares teóricos con el comportamiento real observado en planta.
+          </div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-title">Mejora continua</div>
+          <div class="impact-text">
+            El histórico de curvas permite comparar estilos, líneas y periodos, facilitando iniciativas
+            de mejora y proyectos Kaizen.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="indicadores" class="info-section">
+      <h2 class="section-title">Indicadores de desempeño del modelo</h2>
+      <p class="section-subtitle">
+        El sistema integra varios modelos de clasificación y selecciona el mejor según el F1-score,
+        equilibrando precisión y recall.
+      </p>
+      <div class="impact-grid">
+        <div class="impact-card">
+          <div class="impact-title">Exactitud (Accuracy)</div>
+          <div class="impact-text">
+            Mide el porcentaje de registros correctamente clasificados entre Baja, Media y Alta eficiencia.
+          </div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-title">F1-score</div>
+          <div class="impact-text">
+            Combina precisión y recall, dándole más peso a un desempeño balanceado en las diferentes clases.
+          </div>
+        </div>
+        <div class="impact-card">
+          <div class="impact-title">Curva real vs predicha</div>
+          <div class="impact-text">
+            La comparación visual entre la eficiencia observada y la esperada ayuda a validar el
+            comportamiento general del modelo en el tiempo.
+          </div>
+        </div>
+      </div>
+    </section>
+    """, unsafe_allow_html=True)
+
 # ======================================
 # 2) SISTEMA PREDICTIVO
 # ======================================
 elif opcion == "Sistema predictivo":
+    # ancla para el navbar superior
+    st.markdown("<div id='sistema-predictivo'></div>", unsafe_allow_html=True)
+
     st.subheader("Aplicación del modelo seleccionado sobre datos de producción")
     st.markdown(
         f"El sistema usa automáticamente **{mejor_modelo}** (mejor Accuracy - Precisión - Recall - F1-score). "
@@ -581,12 +666,8 @@ elif opcion == "Sistema predictivo":
                     X_scaled = scaler_pred.transform(X) if scaler_pred is not None else X.values
                     pred_labels = modelo_pred.predict(X_scaled)
 
-                    # =============================
-                    # EFICIENCIA PREDICHA CONTINUA
-                    # =============================
                     eficiencia_predicha_pct = None
 
-                    # Medias reales por categoría en este dataset
                     if "categoria" in df_proc.columns:
                         niveles = (
                             df_proc.groupby("categoria")["eficiencia_pct"]
@@ -596,12 +677,10 @@ elif opcion == "Sistema predictivo":
                     else:
                         niveles = {}
 
-                    # Valores por defecto si falta alguna categoría
                     default_niveles = {"Baja": 40.0, "Media": 70.0, "Alta": 90.0}
                     for k, v in default_niveles.items():
                         niveles.setdefault(k, v)
 
-                    # Valor esperado usando predict_proba
                     if hasattr(modelo_pred, "predict_proba"):
                         try:
                             proba = modelo_pred.predict_proba(X_scaled)
@@ -612,7 +691,6 @@ elif opcion == "Sistema predictivo":
                         except Exception:
                             eficiencia_predicha_pct = None
 
-                    # Respaldo: usar solo la clase predicha
                     if eficiencia_predicha_pct is None:
                         eficiencia_predicha_pct = (
                             pd.Series(pred_labels)
@@ -622,20 +700,16 @@ elif opcion == "Sistema predictivo":
                             .to_numpy()
                         )
 
-                    # Rango real
                     min_real = float(df_proc["eficiencia_pct"].min())
                     max_real = float(df_proc["eficiencia_pct"].max())
                     min_pred = float(np.nanmin(eficiencia_predicha_pct))
                     max_pred = float(np.nanmax(eficiencia_predicha_pct))
 
-                    # <<< REESCALADO PARA LA GRÁFICA >>>
                     if max_pred > min_pred and max_real > min_real:
                         ef_norm = (eficiencia_predicha_pct - min_pred) / (max_pred - min_pred)
                         eficiencia_predicha_pct = ef_norm * (max_real - min_real) + min_real
 
-                    # <<< AJUSTE DE NIVEL (SHIFT) >>>
-                    # Subimos o bajamos la curva predicha para que su promedio
-                    # sea parecido al promedio real (sin cambiar la forma).
+                    # ajuste de nivel (shift)
                     mean_real = float(df_proc["eficiencia_pct"].mean())
                     mean_pred = float(np.nanmean(eficiencia_predicha_pct))
                     shift = mean_real - mean_pred
@@ -688,16 +762,12 @@ elif opcion == "Sistema predictivo":
                     ).set_index("Nivel")
                     st.bar_chart(dist_df)
 
-                    # -----------------------------
-                    # Curva aprendizaje real vs predicha
-                    # -----------------------------
                     st.markdown("### Curva de aprendizaje: eficiencia real vs predicha")
 
                     df_plot = df_res.copy()
                     colf1, colf2 = st.columns(2)
                     usa_fecha = False
 
-                    # filtro por año
                     if "fecha" in df_plot.columns and df_plot["fecha"].notna().any():
                         df_plot = df_plot[df_plot["fecha"].notna()].copy()
                         df_plot["anio"] = df_plot["fecha"].dt.year
@@ -712,7 +782,6 @@ elif opcion == "Sistema predictivo":
                     else:
                         colf1.write("Sin columna de fecha detectada.")
 
-                    # filtro por prenda
                     if "prenda" in df_plot.columns and df_plot["prenda"].notna().any():
                         prendas = sorted(df_plot["prenda"].dropna().unique().tolist())
                         opcion_prenda = colf2.selectbox(
@@ -735,6 +804,7 @@ elif opcion == "Sistema predictivo":
                         n_reg = len(df_plot)
                         if n_reg < 5:
                             st.caption("Hay muy pocos registros para trazar una curva de aprendizaje.")
+                            
                         else:
                             ventana = st.slider(
                                 "Tamaño de la ventana del promedio móvil (n° de registros)",
