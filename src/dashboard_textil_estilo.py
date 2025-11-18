@@ -11,7 +11,7 @@ def _show_image_if_exists(path: str, caption: str = "") -> bool:
     """Renderiza la imagen solo si el archivo existe y es archivo regular."""
     p = Path(path)
     if p.is_file():
-        st.image(str(p), caption=caption, use_container_width=True)
+        st.image(str(p), caption=caption)
         return True
     return False
 
