@@ -882,11 +882,21 @@ elif opcion == "Sistema predictivo":
                         df_res["eficiencia_predicha_pct"] = df_res["eficiencia_pct"]
 
                     st.markdown("Vista preliminar de registros clasificados:")
+                    
+                    preview = df_res[["cantidad", "minutaje", "min_trab", "eficiencia_pct", "pred_categoria"]].head(30).copy()
+                    preview["cantidad"] = preview["cantidad"].astype(int)
+                    preview["min_trab"] = preview["min_trab"].astype(int)
+                    preview["minutaje"] = preview["minutaje"].round(4)
+                    preview["eficiencia_pct"] = preview["eficiencia_pct"].round(2)
+                    
                     # Tabla clara
                     st.table(
-                        df_res[
-                            ["cantidad", "minutaje", "min_trab", "eficiencia_pct", "pred_categoria"]
-                        ].head(30)
+                        preview.style.format({
+                            "cantidad": "{:,.0f}",        # sin decimales
+                            "min_trab": "{:,.0f}",        # sin decimales
+                            "minutaje": "{:.4f}",         # 4 decimales
+                            "eficiencia_pct": "{:.2f}",   # 2 decimales
+                            })
                     )
 
                     conteo = (
@@ -1129,7 +1139,6 @@ elif opcion == "Curvas de entrenamiento por modelo":
 
     curvas_dir = os.path.join(FIG_DIR, "curvas_modelos")
     candidatos = [
-        (os.path.join(curvas_dir, "curvas_4_modelos.png"), "Curvas globales (4 modelos)"),
         (os.path.join(curvas_dir, "rf_curvas.png"), "Random Forest"),
         (os.path.join(curvas_dir, "svm_curvas.png"), "SVM"),
         (os.path.join(curvas_dir, "log_curvas.png"), "Regresión Logística"),
