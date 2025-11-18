@@ -1,17 +1,20 @@
-# src/dashboard_textil.py
 import os
 import pandas as pd
 import numpy as np
 import joblib
 import streamlit as st
+import altair as alt
 from datetime import datetime
 from pathlib import Path
 
+# ======================================
+# PEQUEÑA UTILIDAD PARA IMÁGENES
+# ======================================
 def _show_image_if_exists(path: str, caption: str = "") -> bool:
     """Renderiza la imagen solo si el archivo existe y es archivo regular."""
     p = Path(path)
     if p.is_file():
-        st.image(str(p), caption=caption)
+        st.image(str(p), caption=caption, use_container_width=True)
         return True
     return False
 
@@ -71,27 +74,54 @@ MODELOS = {
 FIG_DIR = os.path.join(BASE_DIR, "figuras")
 
 # ======================================
-# ESTILOS
+# ESTILOS (MODO CLARO)
 # ======================================
 st.markdown("""
 <style>
+/* =========================
+   FONDO GENERAL (MODO CLARO)
+   ========================= */
+
+/* Contenedor principal de la app */
+[data-testid="stAppViewContainer"]{
+  background-color:#f5f6fa;
+}
+
+/* Fondo del sidebar */
+[data-testid="stSidebar"]{
+  background-color:#ffffff;
+}
+
+/* Texto del sidebar más visible */
+[data-testid="stSidebar"] *{
+  color:#222222 !important;
+}
+
+/* Fondo y color de texto base del body */
 body {
-  background-color:#0d1015;
-  color:#f5f7fa;
+  background-color:#f5f6fa;
+  color:#222222;
   font-family:'Segoe UI',sans-serif;
 }
-.block-container { padding-top: 1.5rem; }
 
-/* Barra superior tipo navbar */
+/* Contenedor central */
+.block-container {
+  padding-top: 1.5rem;
+  background-color: transparent;
+}
+
+/* =========================
+   NAVBAR SUPERIOR
+   ========================= */
 .top-navbar{
-  background:linear-gradient(90deg,#d81f26,#8b1a1f,#222);
+  background:linear-gradient(90deg,#ff4b4b,#e22b2b,#b71c1c);
   color:#fff;
   padding:12px 24px;
   border-radius:12px;
   display:flex;
   justify-content:space-between;
   align-items:center;
-  box-shadow:0 4px 12px rgba(0,0,0,.25);
+  box-shadow:0 4px 12px rgba(0,0,0,.15);
   margin-bottom:1.2rem;
 }
 .top-navbar .brand-title{
@@ -104,27 +134,16 @@ body {
   font-size:0.8rem;
   opacity:0.9;
 }
-.top-navbar .nav-links{
-  display:flex;
-  gap:0.6rem;
-  font-size:0.85rem;
-}
-.top-navbar .nav-pill{
-  padding:6px 12px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,0.35);
-  background-color:rgba(255,255,255,0.06);
-  text-decoration:none;
-  color:#fff;
-}
 
-/* Hero principal */
+/* =========================
+   HERO PRINCIPAL
+   ========================= */
 .hero-section{
-  background:radial-gradient(circle at top left,#ff6b6b,#d81f26,#191919);
-  color:#fff;
+  background:radial-gradient(circle at top left,#ffe4e4,#ffb3b3,#ff6b6b);
+  color:#4a1f1f;
   padding:28px 28px 24px 28px;
   border-radius:20px;
-  box-shadow:0 10px 25px rgba(0,0,0,.35);
+  box-shadow:0 10px 25px rgba(0,0,0,.12);
   margin-bottom:1.8rem;
 }
 .hero-grid{
@@ -164,17 +183,18 @@ body {
   font-size:0.85rem;
   padding:6px 14px;
   border-radius:999px;
-  border:1px solid rgba(255,255,255,0.45);
-  color:#fff;
-  background-color:rgba(0,0,0,0.14);
+  border:1px solid rgba(255,255,255,0.8);
+  color:#4a1f1f;
+  background-color:rgba(255,255,255,0.6);
 }
 .hero-right{ min-width:230px; }
 .hero-kpi-card{
-  background-color:rgba(0,0,0,0.45);
+  background-color:rgba(255,255,255,0.9);
   border-radius:16px;
   padding:12px 16px;
   margin-bottom:10px;
-  border:1px solid rgba(255,255,255,0.15);
+  border:1px solid rgba(255,255,255,0.9);
+  box-shadow:0 4px 10px rgba(0,0,0,0.08);
 }
 .hero-kpi-title{
   font-size:0.8rem;
@@ -185,24 +205,32 @@ body {
 .hero-kpi-main{ font-size:1.5rem; font-weight:700; }
 .hero-kpi-sub{ font-size:0.8rem; opacity:0.9; }
 
-/* Secciones info */
+/* =========================
+   SECCIONES DE INFORMACIÓN
+   ========================= */
 .info-section{
-  background-color:#11151d;
+  background-color:#ffffff;
   border-radius:18px;
   padding:18px 20px 16px 20px;
   margin-bottom:1.4rem;
-  box-shadow:0 4px 14px rgba(0,0,0,0.4);
+  box-shadow:0 4px 14px rgba(0,0,0,0.06);
+  border:1px solid #e0e3eb;
 }
-.section-title{
+.section-title,
+.info-section h2{
   font-size:1.4rem;
   font-weight:700;
-  color:#ff6b6b;
+  color:#e53935 !important;
   margin-bottom:0.3rem;
+  opacity:1 !important;
 }
 .section-subtitle{
   font-size:0.92rem;
-  color:#c4c9d4;
+  color:#555a66;
   margin-bottom:0.8rem;
+}
+.info-section p{
+  color:#333333;
 }
 .benefits-grid, .impact-grid{
   display:flex;
@@ -211,53 +239,177 @@ body {
 }
 .benefit-card, .impact-card{
   flex:1 1 220px;
-  background-color:#151b26;
+  background-color:#f9fafc;
   border-radius:14px;
   padding:10px 12px;
-  border:1px solid #262d3d;
+  border:1px solid #dde1ea;
 }
 .benefit-title, .impact-title{
   font-weight:600;
   font-size:0.95rem;
-  color:#ff6b6b;
+  color:#e53935;
   margin-bottom:0.15rem;
 }
 .benefit-text, .impact-text{
   font-size:0.86rem;
-  color:#e2e6f0;
+  color:#455066;
 }
 
-/* Métricas */
+/* =========================
+   MÉTRICAS / TARJETAS
+   ========================= */
 .metric-box{
-  background-color:#151b26;
-  border:2px solid #d81f26;
+  background-color:#ffffff;
+  border:2px solid #e53935;
   border-radius:12px;
-  box-shadow:0 3px 6px rgba(0,0,0,.4);
+  box-shadow:0 3px 8px rgba(0,0,0,.08);
   text-align:center;
   padding:14px;
-  color:#fff;
+  color:#222;
 }
 .metric-box h3{
-  color:#ff6b6b;
+  color:#e53935;
   margin-bottom:4px;
 }
 
-/* Títulos / tablas */
-h2,h3{ color:#ff6b6b; }
+/* =========================
+   TABLAS / DATAFRAME
+   ========================= */
+/* st.dataframe (por si queda algún uso) */
 .dataframe{
-  background-color:#151b26 !important;
+  background-color:#ffffff !important;
   border-radius:10px;
 }
 
-/* Alertas */
-div[data-testid="stAlert"]{
-  background-color:#d81f26 !important;
-  border:1px solid #a1151c !important;
+[data-testid="stDataFrame"]{
+  background-color:#ffffff !important;
+  border-radius:10px;
+  border:1px solid #dde1ea;
+  color:#222222 !important;
+}
+[data-testid="stDataFrame"] div[role="columnheader"],
+[data-testid="stDataFrame"] div[role="gridcell"]{
+  background-color:#ffffff !important;
+  color:#222222 !important;
+}
+[data-testid="stDataFrame"] div[role="row"]:nth-child(even){
+  background-color:#f7f8fc !important;
+}
+[data-testid="stDataFrame"] div[role="row"]:nth-child(odd){
+  background-color:#ffffff !important;
+}
+
+/* st.table (lo que estamos usando ahora) */
+[data-testid="stTable"] table{
+  background-color:#ffffff !important;
+  color:#222222 !important;
+  border-collapse:collapse;
+}
+[data-testid="stTable"] th{
+  background-color:#f0f2f6 !important;
+  color:#222222 !important;
+  font-weight:600;
+  border:1px solid #d0d4e4 !important;
+}
+[data-testid="stTable"] td{
+  background-color:#ffffff !important;
+  color:#222222 !important;
+  border:1px solid #d0d4e4 !important;
+}
+
+/* =========================
+   FILE UPLOADER
+   ========================= */
+[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"]{
+  background-color:#ffffff;
+  border-radius:12px;
+  border:1px solid #dde1ea;
+  color:#222222;
+}
+[data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"] *{
+  color:#222222 !important;
+}
+/* Botón "Browse files" claro */
+[data-testid="stFileUploader"] button{
+  background-color:#f0f2f6 !important;
+  color:#222222 !important;
+  border:1px solid #c4c7cf !important;
+}
+
+/* =========================
+   CONTENEDOR DEL GRÁFICO
+   ========================= */
+[data-testid="stChart"]{
+  background-color:#ffffff;
+  border-radius:12px;
+  padding:12px;
+  box-shadow:0 3px 8px rgba(0,0,0,0.06);
+  border:1px solid #dde1ea;
+}
+
+/* =========================
+   SELECTBOX / MULTISELECT (años, prendas)
+   ========================= */
+[data-baseweb="select"] > div{
+  background-color:#ffffff !important;
+  color:#222222 !important;
   border-radius:8px !important;
-  color:white !important;
+  border:1px solid #c4c7cf !important;
+}
+[data-baseweb="select"] [role="listbox"]{
+  background-color:#ffffff !important;
+  color:#222222 !important;
+}
+[data-baseweb="select"] [role="option"]{
+  background-color:#ffffff !important;
+  color:#222222 !important;
+}
+[data-baseweb="select"] [role="option"]:hover{
+  background-color:#f0f2f6 !important;
+}
+
+/* Etiquetas de los filtros (Filtrar por año, Filtrar por prenda, etc.) */
+label{
+  color:#222222 !important;
+}
+
+/* =========================
+   TÍTULOS GENERALES
+   ========================= */
+h2, h3 {
+  color: #111111 !important;   /* negro */
+  opacity: 1 !important;       /* evita el gris clarito */
+}
+
+/* Títulos y subtítulos creados con st.header / st.subheader / st.markdown */
+[data-testid="stMarkdown"] h1,
+[data-testid="stMarkdown"] h2,
+[data-testid="stMarkdown"] h3,
+[data-testid="stMarkdown"] h4{
+  color:#222222 !important;
+}
+
+/* =========================
+   ALERTAS STREAMLIT
+   ========================= */
+div[data-testid="stAlert"]{
+  background-color:#ffebee !important;
+  border:1px solid #ef5350 !important;
+  border-radius:8px !important;
+  color:#b71c1c !important;
 }
 div[data-testid="stAlert"] *{
-  color:white !important;
+  color:#b71c1c !important;
+}
+
+/* =========================
+   TEXTO MARKDOWN EN NEGRO
+   ========================= */
+[data-testid="stMarkdown"] p,
+[data-testid="stMarkdown"] li,
+[data-testid="stMarkdown"] strong,
+[data-testid="stMarkdown"] em{
+  color:#222222 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -293,7 +445,7 @@ opcion = st.sidebar.radio(
 )
 
 # ======================================
-# UTILIDADES Y PREPROCESO  (igual que antes)
+# UTILIDADES / PREPROCESO
 # ======================================
 def cargar_datos_default():
     hojas = ["L72", "L79"]
@@ -472,7 +624,7 @@ if opcion == "Resumen general":
     <section id="home" class="hero-section">
       <div class="hero-grid">
         <div class="hero-left">
-          <p class="hero-tag">Topitop · Línea de confección</p>
+          <p class="hero-tag">TOPITOP · LÍNEA DE CONFECCIÓN</p>
           <h1 class="hero-title">Predicciones para entender la curva de aprendizaje textil</h1>
           <p class="hero-subtitle">
             Este dashboard integra modelos de Machine Learning (Random Forest, Regresión Logística,
@@ -506,7 +658,8 @@ if opcion == "Resumen general":
     </section>
     """, unsafe_allow_html=True)
 
-    st.dataframe(df_metricas_global.style.format("{:.4f}"), use_container_width=True)
+    # Tabla de métricas en blanco
+    st.table(df_metricas_global.style.format("{:.4f}"))
 
     col1, col2, col3 = st.columns(3)
     col1.markdown(
@@ -622,12 +775,10 @@ if opcion == "Resumen general":
 # 2) SISTEMA PREDICTIVO
 # ======================================
 elif opcion == "Sistema predictivo":
-    # ancla para el navbar superior
-    st.markdown("<div id='sistema-predictivo'></div>", unsafe_allow_html=True)
-
     st.subheader("Aplicación del modelo seleccionado sobre datos de producción")
     st.markdown(
-        f"El sistema usa automáticamente **{mejor_modelo}** (mejor Accuracy - Precisión - Recall - F1-score). "
+        f"El sistema usa automáticamente **{mejor_modelo}** "
+        "(mejor Accuracy - Precisión - Recall - F1-score). "
         "Carga un Excel (.xlsx) o usa el dataset interno."
     )
 
@@ -700,6 +851,7 @@ elif opcion == "Sistema predictivo":
                             .to_numpy()
                         )
 
+                    # reescalado al rango real
                     min_real = float(df_proc["eficiencia_pct"].min())
                     max_real = float(df_proc["eficiencia_pct"].max())
                     min_pred = float(np.nanmin(eficiencia_predicha_pct))
@@ -730,12 +882,20 @@ elif opcion == "Sistema predictivo":
                         df_res["eficiencia_predicha_pct"] = df_res["eficiencia_pct"]
 
                     st.markdown("Vista preliminar de registros clasificados:")
-                    st.dataframe(
-                        df_res[["cantidad", "minutaje", "min_trab", "eficiencia_pct", "pred_categoria"]].head(30),
-                        use_container_width=True,
+                    # Tabla clara
+                    st.table(
+                        df_res[
+                            ["cantidad", "minutaje", "min_trab", "eficiencia_pct", "pred_categoria"]
+                        ].head(30)
                     )
 
-                    conteo = df_res["pred_categoria"].value_counts().reindex(["Baja", "Media", "Alta"]).fillna(0).astype(int)
+                    conteo = (
+                        df_res["pred_categoria"]
+                        .value_counts()
+                        .reindex(["Baja", "Media", "Alta"])
+                        .fillna(0)
+                        .astype(int)
+                    )
                     c1, c2, c3 = st.columns(3)
                     c1.markdown(
                         f"<div class='metric-box'><h3>Registros en Baja</h3>"
@@ -753,15 +913,42 @@ elif opcion == "Sistema predictivo":
                         unsafe_allow_html=True,
                     )
 
+                    # ----- Distribución (bar chart claro con Altair) -----
                     st.markdown("Distribución de niveles de eficiencia previstos:")
+
                     dist_df = pd.DataFrame(
                         {
                             "Nivel": ["Baja", "Media", "Alta"],
-                            "Cantidad": [conteo.get("Baja",0), conteo.get("Media",0), conteo.get("Alta",0)],
+                            "Cantidad": [
+                                conteo.get("Baja", 0),
+                                conteo.get("Media", 0),
+                                conteo.get("Alta", 0),
+                            ],
                         }
-                    ).set_index("Nivel")
-                    st.bar_chart(dist_df)
+                    )
 
+                    chart_dist = (
+                        alt.Chart(dist_df)
+                        .mark_bar()
+                        .encode(
+                            x=alt.X("Nivel:N", title="Nivel de eficiencia"),
+                            y=alt.Y("Cantidad:Q", title="Cantidad de registros"),
+                            tooltip=["Nivel", "Cantidad"],
+                        )
+                        .properties(
+                            height=260,
+                            background="white",
+                        )
+                        .configure_axis(
+                            gridColor="#e0e0e0",
+                            labelColor="#333333",
+                            titleColor="#333333",
+                        )
+                    )
+
+                    st.altair_chart(chart_dist, use_container_width=True)
+
+                    # ========== CURVA DE APRENDIZAJE (Altair) ==========
                     st.markdown("### Curva de aprendizaje: eficiencia real vs predicha")
 
                     df_plot = df_res.copy()
@@ -804,7 +991,6 @@ elif opcion == "Sistema predictivo":
                         n_reg = len(df_plot)
                         if n_reg < 5:
                             st.caption("Hay muy pocos registros para trazar una curva de aprendizaje.")
-                            
                         else:
                             ventana = st.slider(
                                 "Tamaño de la ventana del promedio móvil (n° de registros)",
@@ -837,10 +1023,55 @@ elif opcion == "Sistema predictivo":
                                 else:
                                     df_curve["x"] = np.arange(1, len(df_curve) + 1)
 
-                                df_line = df_curve.set_index("x")[["ef_real_ma", "ef_pred_ma"]]
-                                df_line.columns = ["Eficiencia real", "Eficiencia predicha"]
+                                df_line = df_curve[["x", "ef_real_ma", "ef_pred_ma"]].rename(
+                                    columns={
+                                        "ef_real_ma": "Eficiencia real",
+                                        "ef_pred_ma": "Eficiencia predicha",
+                                    }
+                                )
 
-                                st.line_chart(df_line)
+                                df_melt = df_line.melt("x", var_name="Serie", value_name="Eficiencia")
+
+                                x_encoding = (
+                                    alt.X('x:T', title='Fecha')
+                                    if usa_fecha else
+                                    alt.X('x:Q', title='Registro')
+                                )
+
+                                chart = (
+                                    alt.Chart(df_melt)
+                                    .mark_line()
+                                    .encode(
+                                        x=x_encoding,
+                                        y=alt.Y('Eficiencia:Q', title='Eficiencia (%)'),
+                                        color=alt.Color(
+                                            'Serie:N',
+                                            title='Serie',
+                                            scale=alt.Scale(range=['#1565c0', '#ff6f00'])
+                                        ),
+                                        tooltip=[
+                                            'x',
+                                            'Serie',
+                                            alt.Tooltip('Eficiencia:Q', format='.2f')
+                                        ]
+                                    )
+                                    .properties(
+                                        height=320,
+                                        background='white'
+                                    )
+                                    .configure_axis(
+                                        gridColor='#e0e0e0',
+                                        labelColor='#333333',
+                                        titleColor='#333333'
+                                    )
+                                    .configure_legend(
+                                        labelColor='#333333',
+                                        titleColor='#333333'
+                                    )
+                                )
+
+                                st.altair_chart(chart, use_container_width=True)
+
                                 st.caption(
                                     "Curvas suavizadas (promedio móvil) de eficiencia real y predicha, "
                                     "con la predicha reescalada y ajustada de nivel para ser comparable."
@@ -852,7 +1083,8 @@ elif opcion == "Sistema predictivo":
 elif opcion == "Comparación de modelos":
     st.subheader("Comparativa de modelos de clasificación")
 
-    st.dataframe(df_metricas_global.style.format("{:.4f}"), use_container_width=True)
+    # Tabla clara
+    st.table(df_metricas_global.style.format("{:.4f}"))
 
     comp_dir = os.path.join(FIG_DIR, "modelos_clasificacion")
     alt1 = os.path.join(FIG_DIR, "comparativas_class", "ROC_Comparativa_Modelos.png")
