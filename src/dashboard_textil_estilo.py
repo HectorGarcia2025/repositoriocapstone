@@ -7,9 +7,8 @@ import altair as alt
 from datetime import datetime
 from pathlib import Path
 
-# ======================================
 # PEQUEÑA UTILIDAD PARA IMÁGENES
-# ======================================
+
 def _show_image_if_exists(path: str, caption: str = "") -> bool:
     """Renderiza la imagen solo si el archivo existe y es archivo regular."""
     p = Path(path)
@@ -18,9 +17,8 @@ def _show_image_if_exists(path: str, caption: str = "") -> bool:
         return True
     return False
 
-# ======================================
 # CONFIGURACIÓN GENERAL
-# ======================================
+
 st.set_page_config(
     page_title="Dashboard Curva de Aprendizaje - Topitop",
     layout="wide",
@@ -45,9 +43,8 @@ def _find_models_dir():
 
 MODELS_DIR = _find_models_dir()
 
-# ======================================
 # ARCHIVOS DE MODELOS
-# ======================================
+
 MODELOS = {
     "Random Forest": {
         "model_path": os.path.join(MODELS_DIR, "modelo_curva_rf_class_bal.joblib"),
@@ -73,9 +70,8 @@ MODELOS = {
 
 FIG_DIR = os.path.join(BASE_DIR, "figuras")
 
-# ======================================
 # ESTILOS (MODO CLARO)
-# ======================================
+
 st.markdown("""
 <style>
 /* =========================
@@ -275,7 +271,6 @@ body {
 /* =========================
    TABLAS / DATAFRAME
    ========================= */
-/* st.dataframe (por si queda algún uso) */
 .dataframe{
   background-color:#ffffff !important;
   border-radius:10px;
@@ -299,7 +294,7 @@ body {
   background-color:#ffffff !important;
 }
 
-/* st.table (lo que estamos usando ahora) */
+/* st.table */
 [data-testid="stTable"] table{
   background-color:#ffffff !important;
   color:#222222 !important;
@@ -329,7 +324,6 @@ body {
 [data-testid="stFileUploader"] section[data-testid="stFileUploaderDropzone"] *{
   color:#222222 !important;
 }
-/* Botón "Browse files" claro */
 [data-testid="stFileUploader"] button{
   background-color:#f0f2f6 !important;
   color:#222222 !important;
@@ -348,7 +342,7 @@ body {
 }
 
 /* =========================
-   SELECTBOX / MULTISELECT (años, prendas)
+   SELECTBOX / MULTISELECT
    ========================= */
 [data-baseweb="select"] > div{
   background-color:#ffffff !important;
@@ -368,7 +362,7 @@ body {
   background-color:#f0f2f6 !important;
 }
 
-/* Etiquetas de los filtros (Filtrar por año, Filtrar por prenda, etc.) */
+/* Etiquetas de los filtros */
 label{
   color:#222222 !important;
 }
@@ -377,11 +371,9 @@ label{
    TÍTULOS GENERALES
    ========================= */
 h2, h3 {
-  color: #111111 !important;   /* negro */
-  opacity: 1 !important;       /* evita el gris clarito */
+  color: #111111 !important;
+  opacity: 1 !important;
 }
-
-/* Títulos y subtítulos creados con st.header / st.subheader / st.markdown */
 [data-testid="stMarkdown"] h1,
 [data-testid="stMarkdown"] h2,
 [data-testid="stMarkdown"] h3,
@@ -414,9 +406,8 @@ div[data-testid="stAlert"] *{
 </style>
 """, unsafe_allow_html=True)
 
-# ======================================
 # ENCABEZADO / NAVBAR SUPERIOR
-# ======================================
+
 fecha_actual = datetime.now().strftime("%d/%m/%Y")
 dataset_nombre = os.path.basename(DATA_PATH_DEFAULT)
 st.markdown(f"""
@@ -444,9 +435,6 @@ opcion = st.sidebar.radio(
     ],
 )
 
-# ======================================
-# UTILIDADES / PREPROCESO
-# ======================================
 def cargar_datos_default():
     hojas = ["L72", "L79"]
     df_list = []
@@ -558,27 +546,34 @@ def cargar_metricas_modelo(nombre_mostrado: str):
             return None
     return None
 
+# FUNCIÓN ACTUALIZADA: USA MÉTRICAS REALES O, SI FALTAN, LAS NUEVAS
 def construir_tabla_metricas():
     filas = []
+
     for nombre_mostrado, cfg in MODELOS.items():
         m = cargar_metricas_modelo(nombre_mostrado)
         if m:
             filas.append([
                 nombre_mostrado,
-                m.get("accuracy", 0),
-                m.get("precision", 0),
-                m.get("recall", 0),
-                m.get("f1", 0),
-                m.get("auc", 0),
+                float(m.get("accuracy", 0.0)),
+                float(m.get("precision", 0.0)),
+                float(m.get("recall", 0.0)),
+                float(m.get("f1", 0.0)),
+                float(m.get("auc", 0.0)),
             ])
+
     if not filas:
         filas = [
-            ["Random Forest",        0.9787, 0.9842, 0.9787, 0.9811, 0.9906],
-            ["Regresión Logística",  0.9592, 0.9823, 0.9592, 0.9683, 0.9874],
-            ["SVM",                  0.9823, 0.9901, 0.9823, 0.9848, 0.9934],
-            ["Red Neuronal (ANN)",   0.9647, 0.9821, 0.9647, 0.9714, 0.9929],
+            ["Random Forest",        0.9799, 0.9774, 0.9799, 0.9785, 0.8845],
+            ["Regresión Logística",  0.9604, 0.9823, 0.9604, 0.9690, 0.9881],
+            ["SVM",                  0.9811, 0.9889, 0.9811, 0.9838, 0.9990],
+            ["Red Neuronal (ANN)",   0.9854, 0.9791, 0.9854, 0.9822, 0.9895],
         ]
-    return pd.DataFrame(filas, columns=["Modelo", "Accuracy", "Precisión", "Recall", "F1-score", "AUC"])
+
+    return pd.DataFrame(
+        filas,
+        columns=["Modelo", "Accuracy", "Precisión", "Recall", "F1-score", "AUC"]
+    )
 
 def seleccionar_mejor_modelo(df_metricas: pd.DataFrame, criterio: str = "F1-score"):
     if df_metricas.empty or criterio not in df_metricas.columns:
@@ -616,9 +611,8 @@ mejor_modelo = seleccionar_mejor_modelo(df_metricas_global, "F1-score") or "Rand
 max_acc = float(df_metricas_global["Accuracy"].max()) if not df_metricas_global.empty else 0.0
 avg_f1 = float(df_metricas_global["F1-score"].mean()) if not df_metricas_global.empty else 0.0
 
-# ======================================
-# 1) RESUMEN GENERAL
-# ======================================
+# RESUMEN GENERAL
+
 if opcion == "Resumen general":
     st.markdown(f"""
     <section id="home" class="hero-section">
@@ -658,7 +652,6 @@ if opcion == "Resumen general":
     </section>
     """, unsafe_allow_html=True)
 
-    # Tabla de métricas en blanco
     st.table(df_metricas_global.style.format("{:.4f}"))
 
     col1, col2, col3 = st.columns(3)
@@ -679,6 +672,7 @@ if opcion == "Resumen general":
     )
 
     # --------- SECCIONES: BENEFICIOS / IMPACTO / INDICADORES ----------
+
     st.markdown("""
     <section id="beneficios" class="info-section">
       <h2 class="section-title">Beneficios para la operación</h2>
@@ -771,9 +765,8 @@ if opcion == "Resumen general":
     </section>
     """, unsafe_allow_html=True)
 
-# ======================================
-# 2) SISTEMA PREDICTIVO
-# ======================================
+# SISTEMA PREDICTIVO
+
 elif opcion == "Sistema predictivo":
     st.subheader("Aplicación del modelo seleccionado sobre datos de producción")
     st.markdown(
@@ -882,21 +875,19 @@ elif opcion == "Sistema predictivo":
                         df_res["eficiencia_predicha_pct"] = df_res["eficiencia_pct"]
 
                     st.markdown("Vista preliminar de registros clasificados:")
-                    
                     preview = df_res[["cantidad", "minutaje", "min_trab", "eficiencia_pct", "pred_categoria"]].head(30).copy()
                     preview["cantidad"] = preview["cantidad"].astype(int)
                     preview["min_trab"] = preview["min_trab"].astype(int)
                     preview["minutaje"] = preview["minutaje"].round(4)
                     preview["eficiencia_pct"] = preview["eficiencia_pct"].round(2)
-                    
-                    # Tabla clara
+
                     st.table(
                         preview.style.format({
-                            "cantidad": "{:,.0f}",        # sin decimales
-                            "min_trab": "{:,.0f}",        # sin decimales
-                            "minutaje": "{:.4f}",         # 4 decimales
-                            "eficiencia_pct": "{:.2f}",   # 2 decimales
-                            })
+                            "cantidad": "{:,.0f}",
+                            "min_trab": "{:,.0f}",
+                            "minutaje": "{:.4f}",
+                            "eficiencia_pct": "{:.2f}",
+                        })
                     )
 
                     conteo = (
@@ -923,7 +914,6 @@ elif opcion == "Sistema predictivo":
                         unsafe_allow_html=True,
                     )
 
-                    # ----- Distribución (bar chart claro con Altair) -----
                     st.markdown("Distribución de niveles de eficiencia previstos:")
 
                     dist_df = pd.DataFrame(
@@ -958,7 +948,7 @@ elif opcion == "Sistema predictivo":
 
                     st.altair_chart(chart_dist, use_container_width=True)
 
-                    # ========== CURVA DE APRENDIZAJE (Altair) ==========
+                    # ========== CURVA DE APRENDIZAJE ==========
                     st.markdown("### Curva de aprendizaje: eficiencia real vs predicha")
 
                     df_plot = df_res.copy()
@@ -1087,13 +1077,11 @@ elif opcion == "Sistema predictivo":
                                     "con la predicha reescalada y ajustada de nivel para ser comparable."
                                 )
 
-# ======================================
-# 3) COMPARACIÓN DE MODELOS
-# ======================================
+# COMPARACIÓN DE MODELOS
+
 elif opcion == "Comparación de modelos":
     st.subheader("Comparativa de modelos de clasificación")
 
-    # Tabla clara
     st.table(df_metricas_global.style.format("{:.4f}"))
 
     comp_dir = os.path.join(FIG_DIR, "modelos_clasificacion")
@@ -1131,9 +1119,8 @@ elif opcion == "Comparación de modelos":
             "se muestran valores de ejemplo para ilustrar la comparación."
         )
 
-# ======================================
-# 4) CURVAS DE ENTRENAMIENTO
-# ======================================
+# CURVAS DE ENTRENAMIENTO
+
 elif opcion == "Curvas de entrenamiento por modelo":
     st.subheader("Curvas de entrenamiento/validación por modelo")
 
@@ -1159,9 +1146,8 @@ elif opcion == "Curvas de entrenamiento por modelo":
             "Si prefieres generarlas on-the-fly, avísame y lo integramos aquí."
         )
 
-# ======================================
-# 5) INFORMACIÓN DEL PROYECTO
-# ======================================
+# INFORMACIÓN DEL PROYECTO
+
 elif opcion == "Información del proyecto":
     st.subheader("Información del Proyecto")
     st.markdown("""
