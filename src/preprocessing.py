@@ -16,7 +16,7 @@ def _find_col(df, pred):
 try:
     # 1) Carga de todas las hojas disponibles (L72/L79 u otras si las hubiera)
     xls = pd.ExcelFile(RUTA_EXCEL)
-    hojas = xls.sheet_names  # si quieres forzar sólo L72/L79, usa: ["L72", "L79"]
+    hojas = xls.sheet_names
     df_list = []
     for hoja in hojas:
         tmp = xls.parse(hoja)
@@ -26,7 +26,6 @@ try:
     df = pd.concat(df_list, ignore_index=True)
     print(f"Dataset combinado: {df.shape}")
 
-    # 2) Normalización de nombres
     df.columns = (
         df.columns
         .str.strip()
@@ -35,23 +34,23 @@ try:
         .str.replace('"', "")
     )
 
-    # 3) Filtrar sólo registros tipo "Salida" (si la columna existe)
+    # Filtrar sólo registros tipo "Salida" (si la columna existe)
     if "tipo" in df.columns:
         before = len(df)
         df = df[df["tipo"].str.contains("salida", case=False, na=False)]
         print(f"Filtro tipo='Salida': {before} -> {len(df)} registros")
 
-    # 4) Localizar columnas según plantilla (tolerante a nombres)
+    # Localizar columnas según plantilla (tolerante a nombres)
     col_linea  = _find_col(df, lambda c: "línea" in c or "linea" in c)
     col_estilo = _find_col(df, lambda c: "estilo" in c)
     col_op     = _find_col(df, lambda c: c == "op" or "orden de producción" in c or "orden de produccion" in c or c.startswith("op"))
-    # H: minutaje estilo / "mix" o similar
+    #  minutaje estilo / "mix" o similar
     col_minut  = _find_col(df, lambda c: ("mix" in c) or ("minut" in c and "perman" not in c and "prod" not in c))
-    # J: cantidad
+    #  cantidad
     col_cant   = _find_col(df, lambda c: "cant" in c)
-    # M: total min (minutos producidos)
+    #  total min (minutos producidos)
     col_total  = _find_col(df, lambda c: ("total" in c and "min" in c) or ("min" in c and "prod" in c))
-    # N: min trab (minutos permanencia)
+    #  min trab (minutos permanencia)
     col_mtrab  = _find_col(df, lambda c: "min trab" in c or "perman" in c or c == "n")
     # fecha (opcional)
     col_fecha  = _find_col(df, lambda c: "fecha" in c)
@@ -77,14 +76,13 @@ try:
     if col_linea:  rename[col_linea]  = "linea"
     if col_estilo: rename[col_estilo] = "estilo"
     if col_op:     rename[col_op]     = "op"
-    if col_minut:  rename[col_minut]  = "minutaje"          # minuto por prenda
+    if col_minut:  rename[col_minut]  = "minutaje"          
     rename[col_cant]  = "cantidad"
-    if col_total:  rename[col_total]  = "total_min"         # minutos producidos (si viene)
-    rename[col_mtrab] = "min_trab"                           # minutos permanencia
+    if col_total:  rename[col_total]  = "total_min"         
+    rename[col_mtrab] = "min_trab"                           
     if col_fecha:  rename[col_fecha]  = "fecha"
     df = df.rename(columns=rename)
 
-    # 7) Calcular minutos_producidos: total_min si viene, si no -> minutaje * cantidad
     if "total_min" in df.columns:
         df["minutos_producidos"] = df["total_min"]
         if "minutaje" in df.columns:
@@ -99,7 +97,6 @@ try:
     else:
         df["minutos_producidos"] = df["minutaje"] * df["cantidad"]
 
-    # 8) Filtrar registros inválidos
     before_valid = len(df)
     df = df[
         (df["cantidad"] > 0) &
@@ -111,32 +108,32 @@ try:
     if df.empty:
         raise ValueError("Sin registros válidos luego del filtrado básico.")
 
-    # 9) Eficiencia según fórmula oficial
+    # Eficiencia según fórmula oficial
     df["eficiencia_pct"] = (df["minutos_producidos"] / df["min_trab"]) * 100.0
     df["eficiencia"] = df["eficiencia_pct"] / 100.0
 
-    # 10) Outliers razonables de eficiencia
+    #  Outliers razonables de eficiencia
     before_out = len(df)
     df = df[(df["eficiencia_pct"] >= 0) & (df["eficiencia_pct"] <= 120)].copy()
     print(f"Filtro outliers de eficiencia [0%,120%]: {before_out} -> {len(df)}")
 
-    # 11) Clasificación en Baja/Media/Alta (para modelos de clasificación)
+    # Clasificación en Baja/Media/Alta (para modelos de clasificación)
     bins = [0, 70, 85, 100]
     labels = ["Baja", "Media", "Alta"]
     df["categoria"] = pd.cut(df["eficiencia_pct"], bins=bins, labels=labels, include_lowest=True)
 
-    # 12) Orden de columnas “amigable”
+    # Orden de columnas “amigable”
     ordered = ["linea", "estilo", "op", "minutaje", "fecha",
                "cantidad", "minutos_producidos", "min_trab",
                "eficiencia_pct", "eficiencia", "categoria"]
     df = df[[c for c in ordered if c in df.columns]].copy()
 
-    # 13) Resumen
+    # Resumen
     print("Resumen de columnas finales:", list(df.columns))
     print("Primeras filas:")
     print(df.head(10))
 
-    # 14) Guardado opcional del dataset limpio
+    # Guardado del dataset limpio
     try:
         df.to_csv(RUTA_SALIDA_CSV, index=False, encoding="utf-8")
         print(f"Dataset limpio guardado en: {RUTA_SALIDA_CSV}")
