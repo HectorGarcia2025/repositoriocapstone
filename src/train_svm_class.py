@@ -1,4 +1,3 @@
-# src/train_svm_class.py
 import os
 import joblib
 import numpy as np
@@ -17,9 +16,6 @@ from sklearn.metrics import (
     confusion_matrix,
 )
 
-# ============================
-# RUTAS
-# ============================
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_CLEAN_PATH = os.path.join(BASE_DIR, "data", "processed_topitop.csv")
 MODELS_DIR = os.path.join(BASE_DIR, "models")
@@ -44,9 +40,6 @@ if __name__ == "__main__":
     print("\nDistribución original:")
     print(df["categoria"].value_counts())
 
-    # ============================
-    # VARIABLES
-    # ============================
     X = df[["cantidad", "minutaje", "min_trab"]].values
     y = df["categoria"].astype(str).values  # 'Baja', 'Media', 'Alta'
 
@@ -58,39 +51,26 @@ if __name__ == "__main__":
         random_state=42,
     )
 
-    print("\nDistribución train (sin balanceo explícito):")
+    print("\nDistribución train:")
     print(pd.Series(y_train).value_counts())
 
-    print("\nDistribución test (sin tocar):")
+    print("\nDistribución test :")
     print(pd.Series(y_test).value_counts())
-
-    # ============================
-    # ESCALADO
-    # ============================
     scaler_svm = StandardScaler()
     X_train_scaled = scaler_svm.fit_transform(X_train)
     X_test_scaled = scaler_svm.transform(X_test)
-
-    # ============================
-    # MODELO SVM (RBF, más regulado)
-    # ============================
     print("\nMÉTRICAS SVM (kernel RBF, C=0.7)")
     print("Entrenando SVM...")
 
     svm_clf = SVC(
         kernel="rbf",
-        C=0.7,             # <- más regularización todavía
+        C=0.7, 
         gamma="scale",
-        probability=True,  # necesario para AUC
-        # sin class_weight para no exprimir tanto
+        probability=True,  
         random_state=42,
     )
 
     svm_clf.fit(X_train_scaled, y_train)
-
-    # ============================
-    # PREDICCIONES Y MÉTRICAS
-    # ============================
     y_pred = svm_clf.predict(X_test_scaled)
     y_proba = svm_clf.predict_proba(X_test_scaled)
 
@@ -117,9 +97,6 @@ if __name__ == "__main__":
     print("\nReporte de clasificación:")
     print(classification_report(y_test, y_pred, zero_division=0))
 
-    # ============================
-    # GUARDADO
-    # ============================
     metricas = {
         "accuracy": float(acc),
         "precision": float(prec),

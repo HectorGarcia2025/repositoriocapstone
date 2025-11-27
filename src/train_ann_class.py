@@ -1,4 +1,3 @@
-# src/train_ann_class.py
 import os
 import joblib
 import numpy as np
@@ -61,17 +60,16 @@ if __name__ == "__main__":
     X_train_scaled = scaler_ann.fit_transform(X_train)
     X_test_scaled = scaler_ann.transform(X_test)
 
-    # Red un poco más pequeña y más regularizada (sin early_stopping)
     ann_clf = MLPClassifier(
-        hidden_layer_sizes=(6,),   # antes 8
+        hidden_layer_sizes=(6,),   
         activation="relu",
         solver="adam",
-        alpha=0.15,                # más regularización que antes
-        max_iter=150,              # menos iteraciones
+        alpha=0.15,                
+        max_iter=150,             
         random_state=42,
     )
 
-    print("\nEntrenando red neuronal (ANN) regularizada...")
+    print("\nEntrenando red neuronal (ANN)")
     ann_clf.fit(X_train_scaled, y_train)
 
     y_pred = ann_clf.predict(X_test_scaled)
