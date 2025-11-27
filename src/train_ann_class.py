@@ -1,3 +1,4 @@
+# src/train_ann_class.py
 import os
 import joblib
 import numpy as np
@@ -39,8 +40,9 @@ if __name__ == "__main__":
 
     print("\nDistribución original:")
     print(df["categoria"].value_counts())
+
     X = df[["cantidad", "minutaje", "min_trab"]].values
-    y = df["categoria"].astype(str).values 
+    y = df["categoria"].astype(str).values
 
     X_train, X_test, y_train, y_test = train_test_split(
         X,
@@ -59,12 +61,13 @@ if __name__ == "__main__":
     X_train_scaled = scaler_ann.fit_transform(X_train)
     X_test_scaled = scaler_ann.transform(X_test)
 
+    # Red un poco más pequeña y más regularizada (sin early_stopping)
     ann_clf = MLPClassifier(
-        hidden_layer_sizes=(8,),  
+        hidden_layer_sizes=(6,),   # antes 8
         activation="relu",
         solver="adam",
-        alpha=0.05,               
-        max_iter=200,            
+        alpha=0.15,                # más regularización que antes
+        max_iter=150,              # menos iteraciones
         random_state=42,
     )
 
@@ -80,12 +83,12 @@ if __name__ == "__main__":
     f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
     auc = roc_auc_score(y_test, y_proba, multi_class="ovr")
 
-    print("\nMÉTRICAS RED NEURONAL")
-    print(f"Accuracy: {acc:.4f}")
+    print("\nMÉTRICAS RED NEURONAL (regularizada)")
+    print(f"Accuracy:  {acc:.4f}")
     print(f"Precisión: {prec:.4f}")
-    print(f"Recall: {rec:.4f}")
-    print(f"F1-score: {f1:.4f}")
-    print(f"AUC: {auc:.4f}")
+    print(f"Recall:    {rec:.4f}")
+    print(f"F1-score:  {f1:.4f}")
+    print(f"AUC:       {auc:.4f}")
 
     clases = ann_clf.classes_
     cm = confusion_matrix(y_test, y_pred, labels=clases)

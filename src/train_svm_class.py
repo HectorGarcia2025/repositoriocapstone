@@ -72,17 +72,17 @@ if __name__ == "__main__":
     X_test_scaled = scaler_svm.transform(X_test)
 
     # ============================
-    # MODELO SVM (RBF, balanced)
+    # MODELO SVM (RBF, más regulado)
     # ============================
-    print("\nMÉTRICAS SVM (kernel RBF, class_weight='balanced')")
+    print("\nMÉTRICAS SVM (kernel RBF, C=0.7)")
     print("Entrenando SVM...")
 
     svm_clf = SVC(
-        kernel="rbf",          # volvemos a RBF (no lineal)
-        C=3.0,                 # capacidad moderada
+        kernel="rbf",
+        C=0.7,             # <- más regularización todavía
         gamma="scale",
-        probability=True,      # necesario para AUC
-        class_weight="balanced",
+        probability=True,  # necesario para AUC
+        # sin class_weight para no exprimir tanto
         random_state=42,
     )
 
@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
     auc = roc_auc_score(y_test, y_proba, multi_class="ovr")
 
-    print("\nMÉTRICAS SVM (kernel RBF)")
+    print("\nMÉTRICAS SVM (kernel RBF regulado)")
     print(f"Accuracy:  {acc:.4f}")
     print(f"Precisión: {prec:.4f}")
     print(f"Recall:    {rec:.4f}")
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     print(classification_report(y_test, y_pred, zero_division=0))
 
     # ============================
-    # GUARDADO DE MODELO Y MÉTRICAS
+    # GUARDADO
     # ============================
     metricas = {
         "accuracy": float(acc),
