@@ -1,4 +1,3 @@
-# src/train_log_class.py
 import os
 import joblib
 import numpy as np

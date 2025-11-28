@@ -7,9 +7,6 @@ import altair as alt
 from datetime import datetime
 from pathlib import Path
 
-# ======================================
-# PEQUEÑA UTILIDAD PARA IMÁGENES
-# ======================================
 def _show_image_if_exists(path: str, caption: str = "") -> bool:
     """Renderiza la imagen solo si el archivo existe y es archivo regular."""
     p = Path(path)
@@ -44,6 +41,7 @@ def _find_models_dir():
     return os.path.join(BASE_DIR, "models")
 
 MODELS_DIR = _find_models_dir()
+FIG_DIR = os.path.join(BASE_DIR, "figuras")
 
 # ======================================
 # ARCHIVOS DE MODELOS
@@ -70,8 +68,6 @@ MODELOS = {
         "metricas_file": "metricas_ann_class.joblib",
     },
 }
-
-FIG_DIR = os.path.join(BASE_DIR, "figuras")
 
 # ======================================
 # ESTILOS (MODO CLARO)
@@ -434,7 +430,7 @@ opcion = st.sidebar.radio(
         "Productividad acumulada",
         "Calidad de producción",
         "Comparación de modelos",
-        "Curvas de entrenamiento por modelo",
+        # "Curvas de entrenamiento por modelo",  # ELIMINADO
         "Información del proyecto",
     ],
 )
@@ -646,6 +642,7 @@ def obtener_df_resultados_interno():
         try:
             proba = modelo_pred.predict_proba(X_scaled)
             clases = list(modelo_pred.classes_)
+
             eficiencia_predicha_pct = np.zeros(proba.shape[0], dtype=float)
             for idx, c in enumerate(clases):
                 eficiencia_predicha_pct += niveles.get(str(c), 0.0) * proba[:, idx]
@@ -1513,12 +1510,11 @@ elif opcion == "Comparación de modelos":
     st.table(df_metricas_global.style.format("{:.4f}"))
 
     comp_dir = os.path.join(FIG_DIR, "modelos_clasificacion")
-    alt1 = os.path.join(FIG_DIR, "comparativas_class", "ROC_Comparativa_Modelos.png")
+    alt1 = os.path.join(FIG_DIR, "modelos_clasificacion", "roc_comparative_simulated_en.png")
 
     mostradas = 0
     for fname, cap in [
-        ("heatmap_metricas_modelos.png", "Heatmap de métricas por modelo"),
-        ("f1score_comparativa_final.png", "Comparativa de F1-score por modelo"),
+        ("comparativa_metricas_modelos.png", "Comparativas métricas por modelo")
     ]:
         p = os.path.join(comp_dir, fname)
         if _show_image_if_exists(p, cap):
@@ -1538,7 +1534,7 @@ elif opcion == "Comparación de modelos":
 
     if mejor_modelo:
         st.info(
-            f"Según las métricas cargadas, el modelo con mejor F1-score es **{mejor_modelo}**. "
+            f"Según las métricas cargaas, el modelo con mejores resultados es **{mejor_modelo}**. "
             "Los demás modelos sirven como respaldo y comparación."
         )
     else:
@@ -1548,48 +1544,45 @@ elif opcion == "Comparación de modelos":
         )
 
 # ======================================
-# 7) CURVAS DE ENTRENAMIENTO
-# ======================================
-elif opcion == "Curvas de entrenamiento por modelo":
-    st.subheader("Curvas de entrenamiento/validación por modelo")
-
-    curvas_dir = os.path.join(FIG_DIR, "curvas_modelos")
-    candidatos = [
-        (os.path.join(curvas_dir, "rf_curvas.png"), "Random Forest"),
-        (os.path.join(curvas_dir, "svm_curvas.png"), "SVM"),
-        (os.path.join(curvas_dir, "log_curvas.png"), "Regresión Logística"),
-        (os.path.join(curvas_dir, "ann_curvas.png"), "Red Neuronal (ANN)"),
-    ]
-
-    mostradas = 0
-    for p, cap in candidatos:
-        if _show_image_if_exists(p, cap):
-            mostradas += 1
-
-    if mostradas == 0:
-        st.warning(
-            "No se encontraron imágenes de curvas en el repositorio.\n\n"
-            "Súbelas a `figuras/curvas_modelos/` con estos nombres opcionales:\n"
-            "- `curvas_4_modelos.png`, `rf_curvas.png`, `svm_curvas.png`,\n"
-            "  `log_curvas.png`, `ann_curvas.png`.\n\n"
-            "Si prefieres generarlas on-the-fly, avísame y lo integramos aquí."
-        )
-
-# ======================================
-# 8) INFORMACIÓN DEL PROYECTO
+# 7) INFORMACIÓN DEL PROYECTO
 # ======================================
 elif opcion == "Información del proyecto":
     st.subheader("Información del Proyecto")
+
     st.markdown("""
 **Proyecto:** Modelo predictivo aplicando Machine Learning para la identificación de la curva de aprendizaje en la producción textil.  
 **Cliente:** Topitop S.A.  
 **Equipo de desarrollo:** Hector Agustín Garcia Cortez - Jorge Hiro Chung Quispe  
 **Institución:** Universidad Privada del Norte – Ingeniería de Sistemas Computacionales – 2025  
-**Metodología:** CRISP–DM  
-**Entorno:** Python 3.10 – Visual Studio Code  
-**Bibliotecas:** pandas, scikit-learn, TensorFlow/Keras, seaborn, matplotlib, streamlit  
+**Tipo de investigación:** Aplicada, de enfoque cuantitativo, con diseño no experimental y alcance correlacional–explicativo.  
+**Metodología de desarrollo de datos:** CRISP–DM (comprensión del negocio, comprensión de datos, preparación, modelado, evaluación e implementación).  
+**Entorno de desarrollo:** Python 3.10 – Visual Studio Code.  
+**Bibliotecas principales:** pandas, NumPy, scikit-learn, TensorFlow/Keras, seaborn, matplotlib, streamlit.  
 """)
-    st.info(
-        "El sistema selecciona automáticamente el mejor modelo por la mayoría de métricas "
-        "y muestra la curva de aprendizaje en tiempo real."
-    )
+
+
+    st.markdown("""
+### Modelos de clasificación y métricas
+
+El sistema entrena y compara cuatro modelos de Machine Learning para clasificar la eficiencia de la producción:
+
+- **Regresión Logística:** modelo base interpretable, útil como referencia inicial.  
+- **SVM (kernel RBF):** modelo seleccionado como ganador por su mejor equilibrio entre Accuracy, F1-score y AUC.  
+- **Random Forest:** ensamble robusto, útil para capturar relaciones no lineales entre variables de producción.  
+- **Red Neuronal (ANN):** modelo no lineal que captura patrones complejos en los datos.
+
+Para cada modelo se calculan las métricas de evaluación sobre el conjunto de prueba (30% estratificado):  
+
+- **Accuracy**, **Precision (weighted)**, **Recall (weighted)**, **F1-score (weighted)**, **AUC-ROC OvR**, además de la **matriz de confusión** por clase (Baja, Media, Alta).
+""")
+
+
+    st.markdown("### Diagrama general del sistema predictivo")
+
+    # Mostramos el diagrama del proyecto si existe
+    diagrama_path = os.path.join(FIG_DIR, "diagrama_general_proyecto.png")
+    if not _show_image_if_exists(diagrama_path, "Diagrama general del proyecto"):
+        st.caption(
+            "Sube el diagrama del proyecto a la ruta "
+            "`figuras/diagrama_general_proyecto.png` para visualizarlo aquí."
+        )
