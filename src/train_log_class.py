@@ -1,3 +1,4 @@
+# src/train_log_class.py
 import os
 import joblib
 import numpy as np
@@ -15,7 +16,6 @@ from sklearn.metrics import (
     classification_report,
     confusion_matrix,
 )
-from imblearn.over_sampling import RandomOverSampler
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_CLEAN_PATH = os.path.join(BASE_DIR, "data", "processed_topitop.csv")
@@ -27,8 +27,7 @@ def cargar_dataset_limpio():
     print("Cargando dataset limpio desde:", DATA_CLEAN_PATH)
     if not os.path.exists(DATA_CLEAN_PATH):
         raise FileNotFoundError(
-            f"No se encontró {DATA_CLEAN_PATH}. Ejecuta antes el preprocesamiento "
-            "para generar el dataset limpio."
+            f"No se encontró {DATA_CLEAN_PATH}. Ejecuta antes el preprocesamiento."
         )
     df = pd.read_csv(DATA_CLEAN_PATH)
     df = df.dropna(subset=["categoria"])
@@ -52,32 +51,26 @@ if __name__ == "__main__":
         random_state=42,
     )
 
-    print("\nDistribución train antes del balanceo:")
+    print("\nDistribución train:")
     print(pd.Series(y_train).value_counts())
+    print("\nDistribución test:")
+    print(pd.Series(y_test).value_counts())
 
     scaler_log = StandardScaler()
     X_train_scaled = scaler_log.fit_transform(X_train)
     X_test_scaled = scaler_log.transform(X_test)
 
-    ros = RandomOverSampler(random_state=42)
-    X_train_bal, y_train_bal = ros.fit_resample(X_train_scaled, y_train)
-
-    print("\nDistribución train después del balanceo:")
-    print(pd.Series(y_train_bal).value_counts())
-
-    print("\nDistribución test (sin tocar):")
-    print(pd.Series(y_test).value_counts())
-
+    print("\nMÉTRICAS REGRESIÓN LOGÍSTICA ")
     log_clf = LogisticRegression(
         multi_class="multinomial",
         solver="lbfgs",
-        max_iter=500,
-        class_weight=None,
-        random_state=42,
+        C=0.7,                 
+        class_weight="balanced",
+        max_iter=1000,
+        n_jobs=-1,
     )
 
-    print("\nEntrenando Regresión Logística balanceada...")
-    log_clf.fit(X_train_bal, y_train_bal)
+    log_clf.fit(X_train_scaled, y_train)
 
     y_pred = log_clf.predict(X_test_scaled)
     y_proba = log_clf.predict_proba(X_test_scaled)
@@ -88,12 +81,11 @@ if __name__ == "__main__":
     f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
     auc = roc_auc_score(y_test, y_proba, multi_class="ovr")
 
-    print("\nMÉTRICAS REGRESIÓN LOGÍSTICA)")
-    print(f"Accuracy: {acc:.4f}")
+    print(f"Accuracy:  {acc:.4f}")
     print(f"Precisión: {prec:.4f}")
-    print(f"Recall: {rec:.4f}")
-    print(f"F1-score: {f1:.4f}")
-    print(f"AUC: {auc:.4f}")
+    print(f"Recall:    {rec:.4f}")
+    print(f"F1-score:  {f1:.4f}")
+    print(f"AUC:       {auc:.4f}")
 
     clases = log_clf.classes_
     cm = confusion_matrix(y_test, y_pred, labels=clases)

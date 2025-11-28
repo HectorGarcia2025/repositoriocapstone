@@ -6,6 +6,7 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neural_network import MLPClassifier
+from sklearn.utils.class_weight import compute_class_weight
 from sklearn.metrics import (
     accuracy_score,
     precision_score,
@@ -26,8 +27,7 @@ def cargar_dataset_limpio():
     print("Cargando dataset limpio desde:", DATA_CLEAN_PATH)
     if not os.path.exists(DATA_CLEAN_PATH):
         raise FileNotFoundError(
-            f"No se encontró {DATA_CLEAN_PATH}. Ejecuta antes el preprocesamiento "
-            "para generar el dataset limpio."
+            f"No se encontró {DATA_CLEAN_PATH}. Ejecuta antes el preprocesamiento."
         )
     df = pd.read_csv(DATA_CLEAN_PATH)
     df = df.dropna(subset=["categoria"])
@@ -59,18 +59,27 @@ if __name__ == "__main__":
     scaler_ann = StandardScaler()
     X_train_scaled = scaler_ann.fit_transform(X_train)
     X_test_scaled = scaler_ann.transform(X_test)
+    clases_unicas = np.unique(y_train)
+    pesos = compute_class_weight(
+        class_weight="balanced",
+        classes=clases_unicas,
+        y=y_train,
+    )
+    class_weight_dict = {cls: w for cls, w in zip(clases_unicas, pesos)}
+
+    sample_weight = np.array([class_weight_dict[label] for label in y_train])
 
     ann_clf = MLPClassifier(
-        hidden_layer_sizes=(6,),   
+        hidden_layer_sizes=(8,),
         activation="relu",
         solver="adam",
-        alpha=0.15,                
-        max_iter=150,             
+        alpha=0.05,
+        max_iter=200,         
         random_state=42,
     )
 
-    print("\nEntrenando red neuronal (ANN)")
-    ann_clf.fit(X_train_scaled, y_train)
+    print("\nEntrenando red neuronal...")
+    ann_clf.fit(X_train_scaled, y_train, sample_weight=sample_weight)
 
     y_pred = ann_clf.predict(X_test_scaled)
     y_proba = ann_clf.predict_proba(X_test_scaled)
@@ -81,7 +90,7 @@ if __name__ == "__main__":
     f1 = f1_score(y_test, y_pred, average="weighted", zero_division=0)
     auc = roc_auc_score(y_test, y_proba, multi_class="ovr")
 
-    print("\nMÉTRICAS RED NEURONAL (regularizada)")
+    print("\nMÉTRICAS RED NEURONAL ")
     print(f"Accuracy:  {acc:.4f}")
     print(f"Precisión: {prec:.4f}")
     print(f"Recall:    {rec:.4f}")
@@ -109,4 +118,4 @@ if __name__ == "__main__":
     joblib.dump(scaler_ann, os.path.join(MODELS_DIR, "scaler_X_ann_class.joblib"))
     joblib.dump(metricas, os.path.join(MODELS_DIR, "metricas_ann_class.joblib"))
 
-    print("\nModelo ANN de clasificación guardado correctamente.")
+    print("\nModelo ANN guardado correctamente.")

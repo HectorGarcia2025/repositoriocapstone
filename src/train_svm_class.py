@@ -41,7 +41,7 @@ if __name__ == "__main__":
     print(df["categoria"].value_counts())
 
     X = df[["cantidad", "minutaje", "min_trab"]].values
-    y = df["categoria"].astype(str).values  # 'Baja', 'Media', 'Alta'
+    y = df["categoria"].astype(str).values 
 
     X_train, X_test, y_train, y_test = train_test_split(
         X,
@@ -54,23 +54,25 @@ if __name__ == "__main__":
     print("\nDistribución train:")
     print(pd.Series(y_train).value_counts())
 
-    print("\nDistribución test :")
+    print("\nDistribución test (sin tocar):")
     print(pd.Series(y_test).value_counts())
+
     scaler_svm = StandardScaler()
     X_train_scaled = scaler_svm.fit_transform(X_train)
     X_test_scaled = scaler_svm.transform(X_test)
-    print("\nMÉTRICAS SVM (kernel RBF, C=0.7)")
-    print("Entrenando SVM...")
 
+    print("\nMÉTRICAS SVM")
     svm_clf = SVC(
         kernel="rbf",
-        C=0.7, 
+        C=0.5,              
         gamma="scale",
-        probability=True,  
+        probability=True, 
+        class_weight="balanced",
         random_state=42,
     )
 
     svm_clf.fit(X_train_scaled, y_train)
+
     y_pred = svm_clf.predict(X_test_scaled)
     y_proba = svm_clf.predict_proba(X_test_scaled)
 
@@ -81,7 +83,7 @@ if __name__ == "__main__":
 
     auc = roc_auc_score(y_test, y_proba, multi_class="ovr")
 
-    print("\nMÉTRICAS SVM (kernel RBF regulado)")
+    print("\nMÉTRICAS SVM REGULARIZADO")
     print(f"Accuracy:  {acc:.4f}")
     print(f"Precisión: {prec:.4f}")
     print(f"Recall:    {rec:.4f}")
