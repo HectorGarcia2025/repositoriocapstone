@@ -511,15 +511,19 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
     df_feat["eficiencia"] = df_feat["eficiencia_pct"] / 100.0
 
     df_feat = df_feat[
-        (df_feat["eficiencia_pct"] >= 0)
-        & (df_feat["eficiencia_pct"] <= 120)
+    (df_feat["eficiencia_pct"] >= 0)
+    & (df_feat["eficiencia_pct"] <= 120)
     ].copy()
 
-    bins = [0, 70, 85, 100]
+    bins = [0, 70, 85, 120]
     labels = ["Baja", "Media", "Alta"]
+
     df_feat["categoria"] = pd.cut(
-        df_feat["eficiencia_pct"], bins=bins, labels=labels, include_lowest=True
-    )
+    df_feat["eficiencia_pct"],
+    bins=bins,
+    labels=labels,
+    include_lowest=True
+)
 
     col_fecha = [c for c in df.columns if "fecha" in c]
     if col_fecha:
