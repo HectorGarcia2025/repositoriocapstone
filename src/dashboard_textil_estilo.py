@@ -558,10 +558,10 @@ def construir_tabla_metricas():
             ])
     if not filas:
         filas = [
-            ["Random Forest",        0.9787, 0.9842, 0.9787, 0.9811, 0.9906],
-            ["Regresión Logística",  0.9592, 0.9823, 0.9592, 0.9683, 0.9874],
-            ["SVM",                  0.9823, 0.9901, 0.9823, 0.9848, 0.9934],
-            ["Red Neuronal (ANN)",   0.9647, 0.9821, 0.9647, 0.9714, 0.9929],
+            ["Random Forest",        0.9610, 0.9813, 0.9610, 0.9692, 0.9650],
+            ["Regresión Logística",  0.9586, 0.9822, 0.9586, 0.9679, 0.9872],
+            ["SVM",                  0.9616, 0.9825, 0.9616, 0.9700, 0.9971],
+            ["Red Neuronal (ANN)",   0.9196, 0.9787, 0.9196, 0.9440, 0.9627],
         ]
     return pd.DataFrame(filas, columns=["Modelo", "Accuracy", "Precisión", "Recall", "F1-score", "AUC"])
 
@@ -922,7 +922,6 @@ elif opcion == "Sistema predictivo":
                         ef_norm = (eficiencia_predicha_pct - min_pred) / (max_pred - min_pred)
                         eficiencia_predicha_pct = ef_norm * (max_real - min_real) + min_real
 
-                    # ajuste de nivel (shift)
                     mean_real = float(df_proc["eficiencia_pct"].mean())
                     mean_pred = float(np.nanmean(eficiencia_predicha_pct))
                     shift = mean_real - mean_pred
@@ -1141,10 +1140,10 @@ elif opcion == "Sistema predictivo":
 
 
 # ======================================
-# 3. TASA DE EFICIENCIA
+# 3)TASA DE EFICIENCIA
 # ======================================
 elif opcion == "Tasa de eficiencia":
-    st.subheader("Dimensión: Tasa de eficiencia (Real vs Predicha)")
+    st.subheader("Tasa de eficiencia (Real vs Predicha)")
     df_res = obtener_df_resultados_interno()
 
     if df_res is None or df_res.empty:
@@ -1234,10 +1233,10 @@ elif opcion == "Tasa de eficiencia":
             )
 
 # ======================================
-# 4) DIMENSIÓN: PRODUCTIVIDAD ACUMULADA
+# 4)PRODUCTIVIDAD ACUMULADA
 # ======================================
 elif opcion == "Productividad acumulada":
-    st.subheader("Dimensión: Productividad acumulada (Real vs Predicha)")
+    st.subheader("Productividad acumulada (Real vs Predicha)")
     df_res = obtener_df_resultados_interno()
 
     if df_res is None or df_res.empty:
@@ -1345,10 +1344,10 @@ elif opcion == "Productividad acumulada":
             )
 
 # ======================================
-# 5) DIMENSIÓN: CALIDAD DE PRODUCCIÓN
+# 5)CALIDAD DE PRODUCCIÓN
 # ======================================
 elif opcion == "Calidad de producción":
-    st.subheader("Dimensión: Calidad de producción (Evolución real vs predicha)")
+    st.subheader("Calidad de producción (Evolución real vs predicha)")
     st.markdown(
         "En esta dimensión se sigue en el tiempo la **calidad de la producción**, "
         "representada por la eficiencia promedio de la línea. "
@@ -1528,7 +1527,7 @@ elif opcion == "Información del proyecto":
 **Tipo de investigación:** Aplicada, de enfoque cuantitativo, con diseño no experimental y alcance correlacional–explicativo.  
 **Metodología de desarrollo de datos:** CRISP–DM (comprensión del negocio, comprensión de datos, preparación, modelado, evaluación e implementación).  
 **Entorno de desarrollo:** Python 3.10 – Visual Studio Code.  
-**Bibliotecas principales:** pandas, NumPy, scikit-learn, TensorFlow/Keras, seaborn, matplotlib, streamlit.  
+**Bibliotecas principales:** pandas, NumPy, scikit-learn, matplotlib, seaborn, Altair y streamlit para el dashboard interactivo, además de joblib para la serialización de modelos y pytest para las pruebas unitarias del pipeline de datos.  
 """)
 
 
