@@ -7,6 +7,7 @@ import altair as alt
 from datetime import datetime
 from pathlib import Path
 
+
 def _show_image_if_exists(path: str, caption: str = "") -> bool:
     """Renderiza la imagen solo si el archivo existe y es archivo regular."""
     p = Path(path)
@@ -15,6 +16,10 @@ def _show_image_if_exists(path: str, caption: str = "") -> bool:
         return True
     return False
 
+
+# ======================================
+# CONFIGURACIÓN GENERAL
+# ======================================
 st.set_page_config(
     page_title="Dashboard Curva de Aprendizaje - Topitop",
     layout="wide",
@@ -23,6 +28,7 @@ st.set_page_config(
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DATA_PATH_DEFAULT = os.path.join(BASE_DIR, "data", "2 Salida de prendas.xlsx")
+
 
 def _find_models_dir():
     candidatos = [
@@ -36,6 +42,7 @@ def _find_models_dir():
             return os.path.abspath(c)
     os.makedirs(os.path.join(BASE_DIR, "models"), exist_ok=True)
     return os.path.join(BASE_DIR, "models")
+
 
 MODELS_DIR = _find_models_dir()
 FIG_DIR = os.path.join(BASE_DIR, "figuras")
@@ -66,7 +73,11 @@ MODELOS = {
     },
 }
 
-st.markdown("""
+# ======================================
+# ESTILOS (MODO CLARO)
+# ======================================
+st.markdown(
+    """
 <style>
 /* =========================
    FONDO GENERAL (MODO CLARO)
@@ -394,24 +405,29 @@ div[data-testid="stAlert"] *{
   color:#222222 !important;
 }
 </style>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # ======================================
 # ENCABEZADO / NAVBAR SUPERIOR
 # ======================================
 fecha_actual = datetime.now().strftime("%d/%m/%Y")
 dataset_nombre = os.path.basename(DATA_PATH_DEFAULT)
-st.markdown(f"""
+st.markdown(
+    f"""
 <div class='top-navbar'>
   <div>
     <div class='brand-title'>TOPITOP · CURVA DE APRENDIZAJE</div>
     <div class='brand-sub'>Dashboard de predicción textil · Actualizado el {fecha_actual}</div>
   </div>
 </div>
-""", unsafe_allow_html=True)
+""",
+    unsafe_allow_html=True,
+)
 
 # ======================================
-# SIDEBAR 
+# SIDEBAR
 # ======================================
 st.sidebar.image("src/topitop_logo.png", width=150)
 st.sidebar.header("Navegación")
@@ -428,6 +444,10 @@ opcion = st.sidebar.radio(
     ],
 )
 
+
+# ======================================
+# UTILIDADES / PREPROCESO
+# ======================================
 def cargar_datos_default():
     hojas = ["L72", "L79"]
     df_list = []
@@ -439,6 +459,7 @@ def cargar_datos_default():
         raise RuntimeError("No se hallaron hojas L72/L79 en el Excel base.")
     return pd.concat(df_list, ignore_index=True)
 
+
 def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
     """
     Fórmula oficial:
@@ -448,9 +469,9 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
     df = df_raw.copy()
     df.columns = (
         df.columns.str.strip()
-                  .str.lower()
-                  .str.replace("'", "", regex=False)
-                  .str.replace('"', "", regex=False)
+        .str.lower()
+        .str.replace("'", "", regex=False)
+        .str.replace('"', "", regex=False)
     )
 
     # SOLO REGISTROS DE TIPO SALIDA
@@ -464,12 +485,20 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
         return pd.DataFrame()
     col_cant = cand_cant[0]
 
-    cand_trab = [c for c in df.columns if "min trab" in c or "min_trab" in c or "perman" in c]
+    cand_trab = [
+        c
+        for c in df.columns
+        if "min trab" in c or "min_trab" in c or "perman" in c
+    ]
     if not cand_trab:
         return pd.DataFrame()
     col_min_trab = cand_trab[0]
 
-    cand_minutaje = [c for c in df.columns if "mix" in c or "minutaje" in c or ("minuto" in c and "prenda" in c)]
+    cand_minutaje = [
+        c
+        for c in df.columns
+        if "mix" in c or "minutaje" in c or ("minuto" in c and "prenda" in c)
+    ]
     if cand_minutaje:
         col_minutaje = cand_minutaje[0]
         df["minutaje"] = pd.to_numeric(df[col_minutaje], errors="coerce")
@@ -497,39 +526,46 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
         return df_feat
 
     df_feat["minutos_producidos"] = df_feat["minutaje"] * df_feat["cantidad"]
-    df_feat["eficiencia_pct"] = (df_feat["minutos_producidos"] / df_feat["min_trab"]) * 100
+    df_feat["eficiencia_pct"] = (
+        df_feat["minutos_producidos"] / df_feat["min_trab"]
+    ) * 100
     df_feat["eficiencia"] = df_feat["eficiencia_pct"] / 100.0
 
+    # Filtro de eficiencia razonable
     df_feat = df_feat[
-    (df_feat["eficiencia_pct"] >= 0)
-    & (df_feat["eficiencia_pct"] <= 120)
+        (df_feat["eficiencia_pct"] >= 0) & (df_feat["eficiencia_pct"] <= 120)
     ].copy()
 
+    # Bins de niveles
     bins = [0, 70, 85, 120]
     labels = ["Baja", "Media", "Alta"]
-
     df_feat["categoria"] = pd.cut(
-    df_feat["eficiencia_pct"],
-    bins=bins,
-    labels=labels,
-    include_lowest=True
-)
+        df_feat["eficiencia_pct"],
+        bins=bins,
+        labels=labels,
+        include_lowest=True,
+    )
 
+    # Fecha
     col_fecha = [c for c in df.columns if "fecha" in c]
     if col_fecha:
         fecha_series = pd.to_datetime(
             df[col_fecha[0]],
             errors="coerce",
-            dayfirst=True
+            dayfirst=True,
         )
         df_feat["fecha"] = fecha_series.reindex(df_feat.index)
 
-    col_prenda = [c for c in df.columns if "prenda" in c or "estilo" in c or "modelo" in c]
+    # Prenda / estilo / modelo
+    col_prenda = [
+        c for c in df.columns if "prenda" in c or "estilo" in c or "modelo" in c
+    ]
     if col_prenda:
         prenda_series = df[col_prenda[0]].astype(str)
         df_feat["prenda"] = prenda_series.reindex(df_feat.index).fillna("Sin prenda")
 
     return df_feat
+
 
 def cargar_metricas_modelo(nombre_mostrado: str):
     cfg = MODELOS.get(nombre_mostrado)
@@ -543,32 +579,39 @@ def cargar_metricas_modelo(nombre_mostrado: str):
             return None
     return None
 
+
 def construir_tabla_metricas():
     filas = []
     for nombre_mostrado, cfg in MODELOS.items():
         m = cargar_metricas_modelo(nombre_mostrado)
         if m:
-            filas.append([
-                nombre_mostrado,
-                m.get("accuracy", 0),
-                m.get("precision", 0),
-                m.get("recall", 0),
-                m.get("f1", 0),
-                m.get("auc", 0),
-            ])
+            filas.append(
+                [
+                    nombre_mostrado,
+                    m.get("accuracy", 0),
+                    m.get("precision", 0),
+                    m.get("recall", 0),
+                    m.get("f1", 0),
+                    m.get("auc", 0),
+                ]
+            )
     if not filas:
         filas = [
-            ["Random Forest",        0.9610, 0.9813, 0.9610, 0.9692, 0.9650],
-            ["Regresión Logística",  0.9586, 0.9822, 0.9586, 0.9679, 0.9872],
-            ["SVM",                  0.9616, 0.9825, 0.9616, 0.9700, 0.9971],
-            ["Red Neuronal (ANN)",   0.9196, 0.9787, 0.9196, 0.9440, 0.9627],
+            ["Random Forest", 0.9610, 0.9813, 0.9610, 0.9692, 0.9650],
+            ["Regresión Logística", 0.9586, 0.9822, 0.9586, 0.9679, 0.9872],
+            ["SVM", 0.9616, 0.9825, 0.9616, 0.9700, 0.9971],
+            ["Red Neuronal (ANN)", 0.9196, 0.9787, 0.9196, 0.9440, 0.9627],
         ]
-    return pd.DataFrame(filas, columns=["Modelo", "Accuracy", "Precisión", "Recall", "F1-score", "AUC"])
+    return pd.DataFrame(
+        filas, columns=["Modelo", "Accuracy", "Precisión", "Recall", "F1-score", "AUC"]
+    )
+
 
 def seleccionar_mejor_modelo(df_metricas: pd.DataFrame, criterio: str = "F1-score"):
     if df_metricas.empty or criterio not in df_metricas.columns:
         return None
     return df_metricas[criterio].idxmax()
+
 
 def cargar_modelo_y_scaler(nombre_modelo_mostrado: str):
     cfg = MODELOS.get(nombre_modelo_mostrado)
@@ -591,6 +634,7 @@ def cargar_modelo_y_scaler(nombre_modelo_mostrado: str):
         except Exception:
             scaler = None
     return modelo, scaler
+
 
 @st.cache_data
 def obtener_df_resultados_interno():
@@ -649,6 +693,7 @@ def obtener_df_resultados_interno():
             .to_numpy()
         )
 
+    # Reescalado al rango real
     min_real = float(df_proc["eficiencia_pct"].min())
     max_real = float(df_proc["eficiencia_pct"].max())
     min_pred = float(np.nanmin(eficiencia_predicha_pct))
@@ -658,6 +703,7 @@ def obtener_df_resultados_interno():
         ef_norm = (eficiencia_predicha_pct - min_pred) / (max_pred - min_pred)
         eficiencia_predicha_pct = ef_norm * (max_real - min_real) + min_real
 
+    # Ajuste de nivel (shift)
     mean_real = float(df_proc["eficiencia_pct"].mean())
     mean_pred = float(np.nanmean(eficiencia_predicha_pct))
     shift = mean_real - mean_pred
@@ -669,6 +715,7 @@ def obtener_df_resultados_interno():
     df_res["eficiencia_predicha_pct"] = eficiencia_predicha_pct
 
     return df_res
+
 
 # ======================================
 # TABLA DE MÉTRICAS Y SELECCIÓN AUTOMÁTICA
@@ -683,7 +730,8 @@ avg_f1 = float(df_metricas_global["F1-score"].mean()) if not df_metricas_global.
 # 1) RESUMEN GENERAL
 # ======================================
 if opcion == "Resumen general":
-    st.markdown(f"""
+    st.markdown(
+        f"""
     <section id="home" class="hero-section">
       <div class="hero-grid">
         <div class="hero-left">
@@ -719,7 +767,9 @@ if opcion == "Resumen general":
         </div>
       </div>
     </section>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     st.table(df_metricas_global.style.format("{:.4f}"))
 
@@ -740,7 +790,8 @@ if opcion == "Resumen general":
         unsafe_allow_html=True,
     )
 
-    st.markdown("""
+    st.markdown(
+        """
     <section id="beneficios" class="info-section">
       <h2 class="section-title">Beneficios para la operación</h2>
       <p class="section-subtitle">
@@ -830,7 +881,9 @@ if opcion == "Resumen general":
         </div>
       </div>
     </section>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
 # ======================================
 # 2) SISTEMA PREDICTIVO
@@ -843,13 +896,17 @@ elif opcion == "Sistema predictivo":
         "Carga un Excel (.xlsx) o usa el dataset interno."
     )
 
-    archivo = st.file_uploader("Cargar archivo (.xlsx) con datos de producción", type=["xlsx"])
+    archivo = st.file_uploader(
+        "Cargar archivo (.xlsx) con datos de producción", type=["xlsx"]
+    )
 
     df_raw = None
     if archivo is not None:
         try:
             xls = pd.ExcelFile(archivo)
-            df_raw = pd.concat([xls.parse(h) for h in xls.sheet_names], ignore_index=True)
+            df_raw = pd.concat(
+                [xls.parse(h) for h in xls.sheet_names], ignore_index=True
+            )
         except Exception:
             st.info("No se pudo leer el archivo cargado. Verifique el formato.")
     else:
@@ -875,7 +932,11 @@ elif opcion == "Sistema predictivo":
             else:
                 X = df_proc[["cantidad", "minutaje", "min_trab"]].copy()
                 try:
-                    X_scaled = scaler_pred.transform(X) if scaler_pred is not None else X.values
+                    X_scaled = (
+                        scaler_pred.transform(X)
+                        if scaler_pred is not None
+                        else X.values
+                    )
                     pred_labels = modelo_pred.predict(X_scaled)
 
                     eficiencia_predicha_pct = None
@@ -897,9 +958,13 @@ elif opcion == "Sistema predictivo":
                         try:
                             proba = modelo_pred.predict_proba(X_scaled)
                             clases = list(modelo_pred.classes_)
-                            eficiencia_predicha_pct = np.zeros(proba.shape[0], dtype=float)
+                            eficiencia_predicha_pct = np.zeros(
+                                proba.shape[0], dtype=float
+                            )
                             for idx, c in enumerate(clases):
-                                eficiencia_predicha_pct += niveles.get(str(c), 0.0) * proba[:, idx]
+                                eficiencia_predicha_pct += (
+                                    niveles.get(str(c), 0.0) * proba[:, idx]
+                                )
                         except Exception:
                             eficiencia_predicha_pct = None
 
@@ -919,17 +984,25 @@ elif opcion == "Sistema predictivo":
                     max_pred = float(np.nanmax(eficiencia_predicha_pct))
 
                     if max_pred > min_pred and max_real > min_real:
-                        ef_norm = (eficiencia_predicha_pct - min_pred) / (max_pred - min_pred)
-                        eficiencia_predicha_pct = ef_norm * (max_real - min_real) + min_real
+                        ef_norm = (eficiencia_predicha_pct - min_pred) / (
+                            max_pred - min_pred
+                        )
+                        eficiencia_predicha_pct = (
+                            ef_norm * (max_real - min_real) + min_real
+                        )
 
                     mean_real = float(df_proc["eficiencia_pct"].mean())
                     mean_pred = float(np.nanmean(eficiencia_predicha_pct))
                     shift = mean_real - mean_pred
                     eficiencia_predicha_pct = eficiencia_predicha_pct + shift
-                    eficiencia_predicha_pct = np.clip(eficiencia_predicha_pct, min_real, max_real)
+                    eficiencia_predicha_pct = np.clip(
+                        eficiencia_predicha_pct, min_real, max_real
+                    )
 
                 except Exception as e:
-                    st.info(f"No fue posible generar predicciones con {mejor_modelo}. Detalle técnico: {e}")
+                    st.info(
+                        f"No fue posible generar predicciones con {mejor_modelo}. Detalle técnico: {e}"
+                    )
                     pred_labels = None
                     eficiencia_predicha_pct = None
 
@@ -942,19 +1015,23 @@ elif opcion == "Sistema predictivo":
                         df_res["eficiencia_predicha_pct"] = df_res["eficiencia_pct"]
 
                     st.markdown("Vista preliminar de registros clasificados:")
-                    preview = df_res[["cantidad", "minutaje", "min_trab", "eficiencia_pct", "pred_categoria"]].head(30).copy()
+                    preview = df_res[
+                        ["cantidad", "minutaje", "min_trab", "eficiencia_pct", "pred_categoria"]
+                    ].head(30).copy()
                     preview["cantidad"] = preview["cantidad"].astype(int)
                     preview["min_trab"] = preview["min_trab"].astype(int)
                     preview["minutaje"] = preview["minutaje"].round(4)
                     preview["eficiencia_pct"] = preview["eficiencia_pct"].round(2)
 
                     st.table(
-                        preview.style.format({
-                            "cantidad": "{:,.0f}",
-                            "min_trab": "{:,.0f}",
-                            "minutaje": "{:.4f}",
-                            "eficiencia_pct": "{:.2f}",
-                        })
+                        preview.style.format(
+                            {
+                                "cantidad": "{:,.0f}",
+                                "min_trab": "{:,.0f}",
+                                "minutaje": "{:.4f}",
+                                "eficiencia_pct": "{:.2f}",
+                            }
+                        )
                     )
 
                     conteo = (
@@ -1015,7 +1092,9 @@ elif opcion == "Sistema predictivo":
                     st.altair_chart(chart_dist, use_container_width=True)
 
                     # ========== CURVA DE APRENDIZAJE ==========
-                    st.markdown("### Curva de aprendizaje: eficiencia real vs predicha")
+                    st.markdown(
+                        "### Curva de aprendizaje: eficiencia real vs predicha"
+                    )
 
                     df_plot = df_res.copy()
                     colf1, colf2 = st.columns(2)
@@ -1024,7 +1103,9 @@ elif opcion == "Sistema predictivo":
                     if "fecha" in df_plot.columns and df_plot["fecha"].notna().any():
                         df_plot = df_plot[df_plot["fecha"].notna()].copy()
                         df_plot["anio"] = df_plot["fecha"].dt.year
-                        anios = sorted(df_plot["anio"].dropna().unique().tolist())
+                        anios = sorted(
+                            df_plot["anio"].dropna().unique().tolist()
+                        )
                         opcion_anio = colf1.selectbox(
                             "Filtrar por año:",
                             ["Todos los años"] + [str(a) for a in anios],
@@ -1036,7 +1117,9 @@ elif opcion == "Sistema predictivo":
                         colf1.write("Sin columna de fecha detectada.")
 
                     if "prenda" in df_plot.columns and df_plot["prenda"].notna().any():
-                        prendas = sorted(df_plot["prenda"].dropna().unique().tolist())
+                        prendas = sorted(
+                            df_plot["prenda"].dropna().unique().tolist()
+                        )
                         opcion_prenda = colf2.selectbox(
                             "Filtrar por prenda:",
                             ["Todas las prendas"] + prendas,
@@ -1047,7 +1130,9 @@ elif opcion == "Sistema predictivo":
                         colf2.write("Sin columna de prenda detectada.")
 
                     if df_plot.empty:
-                        st.caption("No hay registros para los filtros seleccionados.")
+                        st.caption(
+                            "No hay registros para los filtros seleccionados."
+                        )
                     else:
                         if usa_fecha:
                             df_plot = df_plot.sort_values("fecha")
@@ -1055,53 +1140,90 @@ elif opcion == "Sistema predictivo":
                             df_plot = df_plot.reset_index(drop=True)
 
                         n_reg = len(df_plot)
+
                         if n_reg < 5:
-                            st.caption("Hay muy pocos registros para trazar una curva de aprendizaje.")
-                        else:
-                            ventana = st.slider(
-                                "Tamaño de la ventana del promedio móvil (n° de registros)",
-                                min_value=5,
-                                max_value=max(5, n_reg // 3),
-                                value=max(5, n_reg // 10),
-                                step=1,
-                                help="Mientras más grande la ventana, más suave será la curva.",
+                            st.caption(
+                                "Hay muy pocos registros para trazar una curva de aprendizaje."
                             )
+                        else:
+                            # PARCHE: evitar slider con min_value == max_value
+                            max_ventana = max(5, n_reg // 3)
+                            default_ventana = max(5, n_reg // 10)
+                            if default_ventana > max_ventana:
+                                default_ventana = max_ventana
+
+                            if max_ventana <= 5:
+                                ventana = 5
+                                st.caption(
+                                    f"Se usa una ventana fija de {ventana} registros "
+                                    "porque hay pocos datos para esta combinación de filtros."
+                                )
+                            else:
+                                ventana = st.slider(
+                                    "Tamaño de la ventana del promedio móvil (n° de registros)",
+                                    min_value=5,
+                                    max_value=max_ventana,
+                                    value=default_ventana,
+                                    step=1,
+                                    help=(
+                                        "Mientras más grande la ventana, "
+                                        "más suave será la curva."
+                                    ),
+                                )
+                            # FIN PARCHE
 
                             df_plot["ef_real_ma"] = (
                                 df_plot["eficiencia_pct"]
-                                .rolling(window=ventana, min_periods=3, center=True)
+                                .rolling(
+                                    window=ventana, min_periods=3, center=True
+                                )
                                 .mean()
                             )
                             df_plot["ef_pred_ma"] = (
                                 df_plot["eficiencia_predicha_pct"]
-                                .rolling(window=ventana, min_periods=3, center=True)
+                                .rolling(
+                                    window=ventana, min_periods=3, center=True
+                                )
                                 .mean()
                             )
 
-                            mask = df_plot["ef_real_ma"].notna() & df_plot["ef_pred_ma"].notna()
+                            mask = (
+                                df_plot["ef_real_ma"].notna()
+                                & df_plot["ef_pred_ma"].notna()
+                            )
                             df_curve = df_plot.loc[mask].copy()
 
                             if df_curve.empty:
-                                st.caption("No se pudo calcular una curva con la ventana seleccionada.")
+                                st.caption(
+                                    "No se pudo calcular una curva con la ventana seleccionada."
+                                )
                             else:
                                 if usa_fecha:
                                     df_curve["x"] = df_curve["fecha"]
                                 else:
-                                    df_curve["x"] = np.arange(1, len(df_curve) + 1)
+                                    df_curve["x"] = np.arange(
+                                        1, len(df_curve) + 1
+                                    )
 
-                                df_line = df_curve[["x", "ef_real_ma", "ef_pred_ma"]].rename(
+                                df_line = df_curve[
+                                    ["x", "ef_real_ma", "ef_pred_ma"]
+                                ].rename(
                                     columns={
                                         "ef_real_ma": "Eficiencia real",
                                         "ef_pred_ma": "Eficiencia predicha",
                                     }
                                 )
 
-                                df_melt = df_line.melt("x", var_name="Serie", value_name="Eficiencia")
+                                df_melt = df_line.melt(
+                                    "x",
+                                    var_name="Serie",
+                                    value_name="Eficiencia",
+                                )
 
                                 x_encoding = (
-                                    alt.X('x:T', title='Fecha')
-                                    if usa_fecha else
-                                    alt.X('x:Q', title='Registro')
+                                    alt.X("x:T", title="Fecha")
+                                    if usa_fecha
+                                    else alt.X("x:Q", title="Registro")
                                 )
 
                                 chart = (
@@ -1109,38 +1231,46 @@ elif opcion == "Sistema predictivo":
                                     .mark_line()
                                     .encode(
                                         x=x_encoding,
-                                        y=alt.Y('Eficiencia:Q', title='Eficiencia (%)'),
+                                        y=alt.Y(
+                                            "Eficiencia:Q",
+                                            title="Eficiencia (%)",
+                                        ),
                                         color=alt.Color(
-                                            'Serie:N',
-                                            title='Serie',
-                                            scale=alt.Scale(range=['#1565c0', '#ff6f00'])
+                                            "Serie:N",
+                                            title="Serie",
+                                            scale=alt.Scale(
+                                                range=["#1565c0", "#ff6f00"]
+                                            ),
                                         ),
                                         tooltip=[
-                                            'x',
-                                            'Serie',
-                                            alt.Tooltip('Eficiencia:Q', format='.2f')
-                                        ]
+                                            "x",
+                                            "Serie",
+                                            alt.Tooltip(
+                                                "Eficiencia:Q", format=".2f"
+                                            ),
+                                        ],
                                     )
                                     .properties(
                                         height=320,
-                                        background='white'
+                                        background="white",
                                     )
                                     .configure_axis(
-                                        gridColor='#e0e0e0',
-                                        labelColor='#333333',
-                                        titleColor='#333333'
+                                        gridColor="#e0e0e0",
+                                        labelColor="#333333",
+                                        titleColor="#333333",
                                     )
                                     .configure_legend(
-                                        labelColor='#333333',
-                                        titleColor='#333333'
+                                        labelColor="#333333",
+                                        titleColor="#333333",
                                     )
                                 )
 
-                                st.altair_chart(chart, use_container_width=True)
-
+                                st.altair_chart(
+                                    chart, use_container_width=True
+                                )
 
 # ======================================
-# 3)TASA DE EFICIENCIA
+# 3) TASA DE EFICIENCIA
 # ======================================
 elif opcion == "Tasa de eficiencia":
     st.subheader("Tasa de eficiencia (Real vs Predicha)")
@@ -1186,10 +1316,19 @@ elif opcion == "Tasa de eficiencia":
                 .mark_circle(size=40, opacity=0.6)
                 .encode(
                     x=alt.X("eficiencia_pct:Q", title="Eficiencia real (%)"),
-                    y=alt.Y("eficiencia_predicha_pct:Q", title="Eficiencia predicha (%)"),
+                    y=alt.Y(
+                        "eficiencia_predicha_pct:Q",
+                        title="Eficiencia predicha (%)",
+                    ),
                     tooltip=[
-                        alt.Tooltip("eficiencia_pct:Q", title="Real", format=".2f"),
-                        alt.Tooltip("eficiencia_predicha_pct:Q", title="Predicha", format=".2f"),
+                        alt.Tooltip(
+                            "eficiencia_pct:Q", title="Real", format=".2f"
+                        ),
+                        alt.Tooltip(
+                            "eficiencia_predicha_pct:Q",
+                            title="Predicha",
+                            format=".2f",
+                        ),
                         "categoria",
                         "pred_categoria",
                     ],
@@ -1197,10 +1336,16 @@ elif opcion == "Tasa de eficiencia":
             )
 
             min_val = float(
-                min(df_plot["eficiencia_pct"].min(), df_plot["eficiencia_predicha_pct"].min())
+                min(
+                    df_plot["eficiencia_pct"].min(),
+                    df_plot["eficiencia_predicha_pct"].min(),
+                )
             )
             max_val = float(
-                max(df_plot["eficiencia_pct"].max(), df_plot["eficiencia_predicha_pct"].max())
+                max(
+                    df_plot["eficiencia_pct"].max(),
+                    df_plot["eficiencia_predicha_pct"].max(),
+                )
             )
             line_df = pd.DataFrame({"x": [min_val, max_val], "y": [min_val, max_val]})
             line = (
@@ -1233,7 +1378,7 @@ elif opcion == "Tasa de eficiencia":
             )
 
 # ======================================
-# 4)PRODUCTIVIDAD ACUMULADA
+# 4) PRODUCTIVIDAD ACUMULADA
 # ======================================
 elif opcion == "Productividad acumulada":
     st.subheader("Productividad acumulada (Real vs Predicha)")
@@ -1286,22 +1431,28 @@ elif opcion == "Productividad acumulada":
                 df_plot["eficiencia_predicha_pct"]
                 / df_plot["eficiencia_pct"].replace(0, np.nan)
             ).fillna(1.0)
-            df_plot["minutos_predichos"] = df_plot["minutos_producidos"] * ratio
+            df_plot["minutos_predichos"] = (
+                df_plot["minutos_producidos"] * ratio
+            )
             df_plot["prod_pred_acum"] = df_plot["minutos_predichos"].cumsum()
 
-            df_line = df_plot[["x", "prod_real_acum", "prod_pred_acum"]].rename(
+            df_line = df_plot[
+                ["x", "prod_real_acum", "prod_pred_acum"]
+            ].rename(
                 columns={
                     "prod_real_acum": "Productividad real acumulada",
                     "prod_pred_acum": "Productividad predicha acumulada",
                 }
             )
 
-            df_melt = df_line.melt("x", var_name="Serie", value_name="Productividad")
+            df_melt = df_line.melt(
+                "x", var_name="Serie", value_name="Productividad"
+            )
 
             x_encoding = (
                 alt.X("x:T", title="Fecha")
-                if usa_fecha else
-                alt.X("x:Q", title="Registro")
+                if usa_fecha
+                else alt.X("x:Q", title="Registro")
             )
 
             chart = (
@@ -1309,7 +1460,10 @@ elif opcion == "Productividad acumulada":
                 .mark_line()
                 .encode(
                     x=x_encoding,
-                    y=alt.Y("Productividad:Q", title="Minutos producidos acumulados"),
+                    y=alt.Y(
+                        "Productividad:Q",
+                        title="Minutos producidos acumulados",
+                    ),
                     color=alt.Color(
                         "Serie:N",
                         title="Serie",
@@ -1344,7 +1498,7 @@ elif opcion == "Productividad acumulada":
             )
 
 # ======================================
-# 5)CALIDAD DE PRODUCCIÓN
+# 5) CALIDAD DE PRODUCCIÓN
 # ======================================
 elif opcion == "Calidad de producción":
     st.subheader("Calidad de producción (Evolución real vs predicha)")
@@ -1352,7 +1506,7 @@ elif opcion == "Calidad de producción":
         "En esta dimensión se sigue en el tiempo la **calidad de la producción**, "
         "representada por la eficiencia promedio de la línea. "
         "La curva azul muestra la eficiencia real observada y la curva anaranjada "
-        "la eficiencia que estima el modelo SVM. Mientras más juntas estén ambas curvas, "
+        "la eficiencia que estima el modelo. Mientras más juntas estén ambas curvas, "
         "mejor reproduce el modelo el comportamiento real del proceso."
     )
 
@@ -1408,7 +1562,9 @@ elif opcion == "Calidad de producción":
             else:
                 df_plot = df_plot.reset_index(drop=True)
                 df_plot["indice"] = np.arange(1, len(df_plot) + 1)
-                df_serie = df_plot[["indice", "eficiencia_pct", "eficiencia_predicha_pct"]].rename(
+                df_serie = df_plot[
+                    ["indice", "eficiencia_pct", "eficiencia_predicha_pct"]
+                ].rename(
                     columns={
                         "eficiencia_pct": "ef_real",
                         "eficiencia_predicha_pct": "ef_pred",
@@ -1423,11 +1579,7 @@ elif opcion == "Calidad de producción":
                     "ef_real": "Eficiencia real",
                     "ef_pred": "Eficiencia predicha",
                 }
-            ).melt(
-                id_vars=x_col,
-                var_name="Serie",
-                value_name="Eficiencia"
-            )
+            ).melt(id_vars=x_col, var_name="Serie", value_name="Eficiencia")
 
             chart = (
                 alt.Chart(df_long)
@@ -1441,8 +1593,11 @@ elif opcion == "Calidad de producción":
                         scale=alt.Scale(range=["#1565c0", "#ff6f00"]),
                     ),
                     tooltip=[
-                        alt.Tooltip(f"{x_col}:T", title="Fecha", format="%Y-%m-%d")
-                        if usa_fecha else alt.Tooltip(f"{x_col}:Q", title="Registro"),
+                        alt.Tooltip(
+                            f"{x_col}:T", title="Fecha", format="%Y-%m-%d"
+                        )
+                        if usa_fecha
+                        else alt.Tooltip(f"{x_col}:Q", title="Registro"),
                         "Serie",
                         alt.Tooltip("Eficiencia:Q", format=".2f"),
                     ],
@@ -1480,7 +1635,9 @@ elif opcion == "Comparación de modelos":
     st.table(df_metricas_global.style.format("{:.4f}"))
 
     comp_dir = os.path.join(FIG_DIR, "modelos_clasificacion")
-    alt1 = os.path.join(FIG_DIR, "modelos_clasificacion", "roc_comparative_simulated_en.png")
+    alt1 = os.path.join(
+        FIG_DIR, "modelos_clasificacion", "roc_comparative_simulated_en.png"
+    )
 
     mostradas = 0
     for fname, cap in [
@@ -1504,7 +1661,7 @@ elif opcion == "Comparación de modelos":
 
     if mejor_modelo:
         st.info(
-            f"Según las métricas cargaas, el modelo con mejores resultados es **{mejor_modelo}**. "
+            f"Según las métricas cargadas, el modelo con mejores resultados es **{mejor_modelo}**. "
             "Los demás modelos sirven como respaldo y comparación."
         )
     else:
@@ -1519,7 +1676,8 @@ elif opcion == "Comparación de modelos":
 elif opcion == "Información del proyecto":
     st.subheader("Información del Proyecto")
 
-    st.markdown("""
+    st.markdown(
+        """
 **Proyecto:** Modelo predictivo aplicando Machine Learning para la identificación de la curva de aprendizaje en la producción textil.  
 **Cliente:** Topitop S.A.  
 **Equipo de desarrollo:** Hector Agustín Garcia Cortez - Jorge Hiro Chung Quispe  
@@ -1528,10 +1686,11 @@ elif opcion == "Información del proyecto":
 **Metodología de desarrollo de datos:** CRISP–DM (comprensión del negocio, comprensión de datos, preparación, modelado, evaluación e implementación).  
 **Entorno de desarrollo:** Python 3.10 – Visual Studio Code.  
 **Bibliotecas principales:** pandas, NumPy, scikit-learn, matplotlib, seaborn, Altair y streamlit para el dashboard interactivo, además de joblib para la serialización de modelos y pytest para las pruebas unitarias del pipeline de datos.  
-""")
+"""
+    )
 
-
-    st.markdown("""
+    st.markdown(
+        """
 ### Modelos de clasificación y métricas
 
 El sistema entrena y compara cuatro modelos de Machine Learning para clasificar la eficiencia de la producción:
@@ -1544,8 +1703,8 @@ El sistema entrena y compara cuatro modelos de Machine Learning para clasificar 
 Para cada modelo se calculan las métricas de evaluación sobre el conjunto de prueba (30% estratificado):  
 
 - **Accuracy**, **Precision (weighted)**, **Recall (weighted)**, **F1-score (weighted)**, **AUC-ROC OvR**, además de la **matriz de confusión** por clase (Baja, Media, Alta).
-""")
-
+"""
+    )
 
     st.markdown("### Diagrama general del sistema predictivo")
     diagrama_path = os.path.join(FIG_DIR, "diagrama_general_proyecto.png")
