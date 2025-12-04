@@ -15,9 +15,6 @@ def _show_image_if_exists(path: str, caption: str = "") -> bool:
         return True
     return False
 
-# ======================================
-# CONFIGURACIÓN GENERAL
-# ======================================
 st.set_page_config(
     page_title="Dashboard Curva de Aprendizaje - Topitop",
     layout="wide",
@@ -69,9 +66,6 @@ MODELOS = {
     },
 }
 
-# ======================================
-# ESTILOS (MODO CLARO)
-# ======================================
 st.markdown("""
 <style>
 /* =========================
@@ -417,7 +411,7 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 # ======================================
-# SIDEBAR (navegación)
+# SIDEBAR 
 # ======================================
 st.sidebar.image("src/topitop_logo.png", width=150)
 st.sidebar.header("Navegación")
@@ -430,14 +424,10 @@ opcion = st.sidebar.radio(
         "Productividad acumulada",
         "Calidad de producción",
         "Comparación de modelos",
-        # "Curvas de entrenamiento por modelo",  # ELIMINADO
         "Información del proyecto",
     ],
 )
 
-# ======================================
-# UTILIDADES / PREPROCESO
-# ======================================
 def cargar_datos_default():
     hojas = ["L72", "L79"]
     df_list = []
@@ -602,9 +592,6 @@ def cargar_modelo_y_scaler(nombre_modelo_mostrado: str):
             scaler = None
     return modelo, scaler
 
-# ======================================
-# PREDICCIONES BASE PARA LAS DIMENSIONES
-# ======================================
 @st.cache_data
 def obtener_df_resultados_interno():
     """Usa el Excel base + mejor modelo para generar df_res con real vs predicho."""
@@ -662,7 +649,6 @@ def obtener_df_resultados_interno():
             .to_numpy()
         )
 
-    # Reescalado al rango real
     min_real = float(df_proc["eficiencia_pct"].min())
     max_real = float(df_proc["eficiencia_pct"].max())
     min_pred = float(np.nanmin(eficiencia_predicha_pct))
@@ -672,7 +658,6 @@ def obtener_df_resultados_interno():
         ef_norm = (eficiencia_predicha_pct - min_pred) / (max_pred - min_pred)
         eficiencia_predicha_pct = ef_norm * (max_real - min_real) + min_real
 
-    # Ajuste de nivel (shift)
     mean_real = float(df_proc["eficiencia_pct"].mean())
     mean_pred = float(np.nanmean(eficiencia_predicha_pct))
     shift = mean_real - mean_pred
@@ -1098,7 +1083,7 @@ elif opcion == "Sistema predictivo":
                             df_curve = df_plot.loc[mask].copy()
 
                             if df_curve.empty:
-                                st.caption("No se pudo calcular una curva suavizada con la ventana seleccionada.")
+                                st.caption("No se pudo calcular una curva con la ventana seleccionada.")
                             else:
                                 if usa_fecha:
                                     df_curve["x"] = df_curve["fecha"]
@@ -1154,13 +1139,9 @@ elif opcion == "Sistema predictivo":
 
                                 st.altair_chart(chart, use_container_width=True)
 
-                                st.caption(
-                                    "Curvas suavizadas (promedio móvil) de eficiencia real y predicha, "
-                                    "con la predicha reescalada y ajustada de nivel para ser comparable."
-                                )
 
 # ======================================
-# 3) DIMENSIÓN: TASA DE EFICIENCIA
+# 3. TASA DE EFICIENCIA
 # ======================================
 elif opcion == "Tasa de eficiencia":
     st.subheader("Dimensión: Tasa de eficiencia (Real vs Predicha)")
@@ -1201,7 +1182,6 @@ elif opcion == "Tasa de eficiencia":
         if df_plot.empty:
             st.caption("No hay registros para los filtros seleccionados.")
         else:
-            # Scatter real vs predicha
             scatter = (
                 alt.Chart(df_plot)
                 .mark_circle(size=40, opacity=0.6)
@@ -1217,7 +1197,6 @@ elif opcion == "Tasa de eficiencia":
                 )
             )
 
-            # Línea y=x
             min_val = float(
                 min(df_plot["eficiencia_pct"].min(), df_plot["eficiencia_predicha_pct"].min())
             )
@@ -1296,7 +1275,6 @@ elif opcion == "Productividad acumulada":
         if df_plot.empty:
             st.caption("No hay registros para los filtros seleccionados.")
         else:
-            # Orden temporal
             if usa_fecha:
                 df_plot = df_plot.sort_values("fecha")
                 df_plot["x"] = df_plot["fecha"]
@@ -1304,10 +1282,7 @@ elif opcion == "Productividad acumulada":
                 df_plot = df_plot.reset_index(drop=True)
                 df_plot["x"] = np.arange(1, len(df_plot) + 1)
 
-            # Productividad real: minutos_producidos acumulados
             df_plot["prod_real_acum"] = df_plot["minutos_producidos"].cumsum()
-
-            # Productividad predicha: ajustamos usando la razón de eficiencias
             ratio = (
                 df_plot["eficiencia_predicha_pct"]
                 / df_plot["eficiencia_pct"].replace(0, np.nan)
@@ -1391,7 +1366,6 @@ elif opcion == "Calidad de producción":
         colf1, colf2 = st.columns(2)
         usa_fecha = False
 
-        # ---- Filtro por año (si hay fecha) ----
         if "fecha" in df_plot.columns and df_plot["fecha"].notna().any():
             df_plot = df_plot[df_plot["fecha"].notna()].copy()
             df_plot["anio"] = df_plot["fecha"].dt.year
@@ -1406,7 +1380,6 @@ elif opcion == "Calidad de producción":
         else:
             colf1.write("Sin columna de fecha detectada.")
 
-        # ---- Filtro por prenda (si existe) ----
         if "prenda" in df_plot.columns and df_plot["prenda"].notna().any():
             prendas = sorted(df_plot["prenda"].dropna().unique().tolist())
             opcion_prenda = colf2.selectbox(
@@ -1421,11 +1394,7 @@ elif opcion == "Calidad de producción":
         if df_plot.empty:
             st.caption("No hay registros para los filtros seleccionados.")
         else:
-            # ===========================
-            # Serie temporal real vs predicha
-            # ===========================
             if usa_fecha:
-                # Ordenamos por fecha y promediamos por día
                 df_serie = (
                     df_plot.sort_values("fecha")
                     .groupby("fecha")
@@ -1438,7 +1407,6 @@ elif opcion == "Calidad de producción":
                 x_col = "fecha"
                 x_encoding = alt.X("fecha:T", title="Fecha")
             else:
-                # Sin fecha: usamos índice como eje X
                 df_plot = df_plot.reset_index(drop=True)
                 df_plot["indice"] = np.arange(1, len(df_plot) + 1)
                 df_serie = df_plot[["indice", "eficiencia_pct", "eficiencia_predicha_pct"]].rename(
@@ -1451,7 +1419,6 @@ elif opcion == "Calidad de producción":
                 x_col = "x"
                 x_encoding = alt.X("x:Q", title="Registro")
 
-            # Renombramos columnas para el gráfico
             df_long = df_serie.rename(
                 columns={
                     "ef_real": "Eficiencia real",
@@ -1582,8 +1549,6 @@ Para cada modelo se calculan las métricas de evaluación sobre el conjunto de p
 
 
     st.markdown("### Diagrama general del sistema predictivo")
-
-    # Mostramos el diagrama del proyecto si existe
     diagrama_path = os.path.join(FIG_DIR, "diagrama_general_proyecto.png")
     if not _show_image_if_exists(diagrama_path, "Diagrama general del proyecto"):
         st.caption(

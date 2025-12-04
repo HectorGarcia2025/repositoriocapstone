@@ -28,7 +28,7 @@ def cargar_y_unir_hojas(path_excel: str) -> pd.DataFrame:
         raise FileNotFoundError(f"No se encontró el Excel en: {path_excel}")
 
     xls = pd.ExcelFile(path_excel)
-    hojas = xls.sheet_names              # si quieres solo L72/L79: ["L72", "L79"]
+    hojas = xls.sheet_names            
     print(f"Hojas encontradas: {hojas}")
 
     df_list = []
@@ -55,8 +55,6 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
       - Genera categoría (Baja, Media, Alta) en función de eficiencia_pct
     """
     df = df_raw.copy()
-
-    # Normalizar nombres
     df.columns = (
         df.columns
         .str.strip()
@@ -65,22 +63,16 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
         .str.replace('"', "", regex=False)
     )
 
-    # Solo tipo "salida" si existe la columna tipo
     if "tipo" in df.columns:
         antes = len(df)
         df = df[df["tipo"].astype(str).str.contains("salida", case=False, na=False)]
         print(f"Filtrado por TIPO=salida: {antes} -> {len(df)} filas")
 
-    # Quitar columnas duplicadas
     df = df.loc[:, ~df.columns.duplicated()]
 
-    # ---------- Buscar columnas clave ----------
-    # cantidad
     col_cant = _find_col(df, lambda c: "cant" in c)
     if not col_cant:
         raise RuntimeError("No se encontró columna de 'cantidad' (ej. contiene 'cant').")
-
-    # minutos de trabajo (min_trab / permanencia / min trab)
     col_min_trab = _find_col(
         df,
         lambda c: "min trab" in c or "min_trab" in c or "perman" in c,
@@ -90,7 +82,6 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
             "No se encontró columna de minutos de trabajo (ej. contiene 'min trab', 'min_trab' o 'perman')."
         )
 
-    # minutaje por prenda (minuto prenda / mix / minutaje / total minutos)
     col_minutaje = _find_col(
         df,
         lambda c: "mix" in c
@@ -99,11 +90,9 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
     )
 
     if col_minutaje:
-        # Tenemos directamente el minutaje
         df["minutaje"] = pd.to_numeric(df[col_minutaje], errors="coerce")
         print(f"Usando columna '{col_minutaje}' como minutaje por prenda.")
     else:
-        # Buscar total de minutos y dividir entre cantidad
         col_total_min = _find_col(df, lambda c: "total" in c and "min" in c)
         if not col_total_min:
             raise RuntimeError(
@@ -117,14 +106,10 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
             pd.to_numeric(df[col_total_min], errors="coerce")
             / pd.to_numeric(df[col_cant], errors="coerce")
         )
-
-    # ---------- Construir dataframe de features ----------
     df_feat = df[[col_cant, "minutaje", col_min_trab]].copy()
     df_feat.columns = ["cantidad", "minutaje", "min_trab"]
     df_feat = df_feat.loc[:, ~df_feat.columns.duplicated()]
     df_feat = df_feat.apply(pd.to_numeric, errors="coerce")
-
-    # Filtrar valores no válidos
     antes_validos = len(df_feat)
     df_feat = df_feat[
         (df_feat["cantidad"] > 0)
@@ -136,33 +121,28 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
     if df_feat.empty:
         raise RuntimeError("Tras el filtrado no quedaron filas válidas.")
 
-    # ---------- Cálculos finales ----------
     df_feat["minutos_producidos"] = df_feat["minutaje"] * df_feat["cantidad"]
     df_feat["eficiencia_pct"] = (df_feat["minutos_producidos"] / df_feat["min_trab"]) * 100.0
     df_feat["eficiencia"] = df_feat["eficiencia_pct"] / 100.0
 
-    # Limitar eficiencias a un rango razonable (0–120%)
     antes_rango = len(df_feat)
     df_feat = df_feat[
         (df_feat["eficiencia_pct"] >= 0) & (df_feat["eficiencia_pct"] <= 120)
     ].copy()
     print(f"Filtrado por rango de eficiencia (0–120%): {antes_rango} -> {len(df_feat)} filas")
 
-    # Categorizar (igual que en el dashboard)
     bins = [0, 70, 85, 100]
     labels = ["Baja", "Media", "Alta"]
     df_feat["categoria"] = pd.cut(
         df_feat["eficiencia_pct"], bins=bins, labels=labels, include_lowest=True
     )
 
-    # Fecha (si existe)
     col_fecha = _find_col(df, lambda c: "fecha" in c)
     if col_fecha:
         df_feat["fecha"] = pd.to_datetime(
             df[col_fecha], errors="coerce", dayfirst=True
         )
 
-    # Prenda / modelo / estilo (si existe)
     col_prenda = _find_col(
         df, lambda c: "prenda" in c or "estilo" in c or "modelo" in c
     )
@@ -176,17 +156,11 @@ def preprocesar(df_raw: pd.DataFrame) -> pd.DataFrame:
 
 
 def main():
-    # 1) Cargar Excel
     df_raw = cargar_y_unir_hojas(RUTA_EXCEL)
-
-    # 2) Preprocesar
     df_proc = preprocesar(df_raw)
-
-    # 3) Guardar CSV
     df_proc.to_csv(RUTA_SALIDA_CSV, index=False, encoding="utf-8-sig")
-    print(f"\n✅ Preprocesamiento completo. CSV guardado en:\n{RUTA_SALIDA_CSV}")
+    print(f"\n Preprocesamiento completo. CSV guardado en:\n{RUTA_SALIDA_CSV}")
     print(f"Shape final: {df_proc.shape[0]} filas x {df_proc.shape[1]} columnas")
-
 
 if __name__ == "__main__":
     main()

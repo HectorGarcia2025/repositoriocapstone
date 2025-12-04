@@ -54,7 +54,7 @@ if __name__ == "__main__":
     print("\nDistribución train:")
     print(pd.Series(y_train).value_counts())
 
-    print("\nDistribución test (sin tocar):")
+    print("\nDistribución test:")
     print(pd.Series(y_test).value_counts())
 
     scaler_svm = StandardScaler()

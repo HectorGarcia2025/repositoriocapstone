@@ -22,15 +22,6 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 
 
 def cargar_dataset_limpio():
-    """
-    Dataset ya sale del preprocesamiento oficial:
-
-      - Integración L72/L79
-      - cantidad, minutaje, min_trab
-      - minutos_producidos = minutaje * cantidad
-      - eficiencia_pct = (minutos_producidos / min_trab) * 100, acotado [0,120]
-      - categoria: Baja[0,70), Media[70,85), Alta[85,100)
-    """
     print("Cargando dataset limpio desde:", DATA_CLEAN_PATH)
     if not os.path.exists(DATA_CLEAN_PATH):
         raise FileNotFoundError(
