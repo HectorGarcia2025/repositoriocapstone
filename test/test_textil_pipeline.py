@@ -1,4 +1,3 @@
-# test/test_textil_pipeline.py
 import os
 import sys
 import numpy as np

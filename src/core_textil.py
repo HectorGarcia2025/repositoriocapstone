@@ -1,4 +1,3 @@
-# src/core_textil.py
 import os
 import numpy as np
 import pandas as pd
